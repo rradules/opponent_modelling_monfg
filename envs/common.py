@@ -1,13 +1,15 @@
 import gym
 import numpy as np
 
-#from gym.spaces import prng
+
+# from gym.spaces import prng
 
 
 class OneHot(gym.Space):
     """
     One-hot space. Used as the observation space.
     """
+
     def __init__(self, n):
         self.n = n
 
@@ -17,13 +19,13 @@ class OneHot(gym.Space):
 
     def contains(self, x):
         return isinstance(x, np.ndarray) and \
-               x.shape == (self.n, ) and \
+               x.shape == (self.n,) and \
                np.all(np.logical_or(x == 0, x == 1)) and \
                np.sum(x) == 1
 
     @property
     def shape(self):
-        return (self.n, )
+        return (self.n,)
 
     def __repr__(self):
         return "OneHot(%d)" % self.n

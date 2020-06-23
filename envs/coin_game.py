@@ -4,8 +4,8 @@ Coin Game environment.
 import gym
 import numpy as np
 
-from gym.spaces import Discrete, Tuple
-#from gym.spaces import prng
+
+# from gym.spaces import prng
 
 
 class CoinGameVec(gym.Env):
@@ -16,9 +16,9 @@ class CoinGameVec(gym.Env):
     NUM_AGENTS = 2
     NUM_ACTIONS = 4
     MOVES = [
-        np.array([0,  1]),
+        np.array([0, 1]),
         np.array([0, -1]),
-        np.array([1,  0]),
+        np.array([1, 0]),
         np.array([-1, 0]),
     ]
 
@@ -41,7 +41,7 @@ class CoinGameVec(gym.Env):
         np_random = np.random.RandomState()
         self.red_coin = np_random.rand(2, size=self.batch_size)
         # Agent and coin positions
-        self.red_pos  = np_random.randint(
+        self.red_pos = np_random.randint(
             self.grid_size, size=(self.batch_size, 2))
         self.blue_pos = np_random.randint(
             self.grid_size, size=(self.batch_size, 2))
@@ -66,7 +66,7 @@ class CoinGameVec(gym.Env):
             success = 0
             self.coin_pos[i] = np_random.randint(self.grid_size, size=(2))
             success = 1 - self._same_pos(self.red_pos[i],
-                                          self.coin_pos[i])
+                                         self.coin_pos[i])
             success += 1 - self._same_pos(self.blue_pos[i],
                                           self.coin_pos[i])
 
