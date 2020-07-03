@@ -12,7 +12,7 @@ sns.set_context("paper", rc={"font.size":18,"axes.labelsize":18,"xtick.labelsize
 sns.set_style('white', {'axes.edgecolor': "0.5","pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
-info = ["1M"]
+info = ["0M", "1M"]
 n_lookaheads = 3
 trials = 5
 

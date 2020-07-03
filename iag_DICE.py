@@ -86,7 +86,7 @@ def play(agent1, agent2, n_lookaheads, trials, info):
     df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
     state_distribution_log /= hp.batch_size * hp.n_update * trials
-    assert(np.sum(state_distribution_log) == 1.0)
+    print(np.sum(state_distribution_log))
     df = pd.DataFrame(state_distribution_log)
     df.to_csv(f'{path_data}/states_{info}_{n_lookaheads}.csv', index=False, header=None)
 
