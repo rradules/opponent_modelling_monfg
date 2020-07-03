@@ -13,8 +13,8 @@ sns.set_style('white', {'axes.edgecolor': "0.5","pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 info = ["0M", "1M"]
-n_lookaheads = 3
-trials = 5
+n_lookaheads = 5
+trials = 10
 
 episodes = 1000
 

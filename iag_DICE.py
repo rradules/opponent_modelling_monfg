@@ -12,6 +12,7 @@ from utils.hp_dice import Hp
 from agents.agent_dice import AgentBase, Agent1M
 from utils.utils import mkdir_p
 from collections import Counter
+import argparse
 
 hp = Hp()
 
@@ -106,16 +107,21 @@ def get_act_probs(actions):
         act_probs[action] = count[action] / total
     return act_probs
 
-if __name__ == "__main__":
 
-    colors = ['b', 'c', 'm', 'r']
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-trials', type=int, default=10, help="number of trials")
+    parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
+
+    args = parser.parse_args()
 
     u1 = lambda x: x[0] ** 2 + x[1] ** 2
     u2 = lambda x: x[0] * x[1]
 
     info = ["0M", "1M"]
-    n_lookaheads = 3
-    trials = 2
+    n_lookaheads = args.lookahead
+    trials = args.trials
     for el in info:
         for i in range(n_lookaheads):
             torch.manual_seed(hp.seed)
