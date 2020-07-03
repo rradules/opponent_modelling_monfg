@@ -1,10 +1,7 @@
 # coding: utf-8
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.distributions import Categorical
 import pandas as pd
 
 from envs import IGA
