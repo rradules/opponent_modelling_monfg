@@ -13,15 +13,15 @@ sns.set_style('white', {'axes.edgecolor': "0.5","pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 info = ["0M", "1M"]
-n_lookaheads = 5
+n_lookaheads = 2
 trials = 10
 
 episodes = 1000
-
-path_data = 'results/dice'
+mooc = 'ESR'
+path_data = f'results/dice/{mooc}'
 
 for el in info:
-        path_plots = f'plots/dice/{el}'
+        path_plots = f'plots/dice/{mooc}/{el}'
         mkdir_p(path_plots)
         df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')
 
