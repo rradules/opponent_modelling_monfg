@@ -18,65 +18,38 @@ trials = 10
 
 episodes = 1000
 
-path_plots = 'plots/dice'
-mkdir_p(path_plots)
-
 path_data = 'results/dice'
 
-'''
-for l in range(n_lookaheads):
-    for el in info:
-        df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}_{l}.csv')
-        df2 = pd.read_csv(f'{path_data}/agent2_payoff_{el}_{l}.csv')
-
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1, ci='sd', label='Agent 1')
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2, ci='sd', label='Agent 2')
-        ax.set(ylabel='Scalarised payoff per step')
-        ax.set(xlabel='Iterations')
-        ax.set_ylim(1, 18)
-        ax.set_xlim(0, episodes)
-        plot_name = f"{path_plots}/payoffs_{el}_{l}"
-
-        plt.savefig(plot_name + ".pdf")
-        plt.clf()
-'''
 for el in info:
+        path_plots = f'plots/dice/{el}'
+        mkdir_p(path_plots)
         df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')
 
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1.loc[df1['Lookahead'] == 0], ci='sd', label='Lookahead 0')
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1.loc[df1['Lookahead'] == 1], ci='sd',
-                          label='Lookahead 1')
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1.loc[df1['Lookahead'] == 2], ci='sd',
-                          label='Lookahead 2')
+        for l in range(n_lookaheads):
+                ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1.loc[df1['Lookahead'] == l], ci='sd', label=f'Lookahead {l}')
 
         ax.set(ylabel='Scalarised payoff per step')
         ax.set(xlabel='Iterations')
-        ax.set_ylim(0, 18)
+        ax.set_ylim(0, 14)
         ax.set_xlim(0, episodes)
         plot_name = f"{path_plots}/payoffs_ag1_{el}"
         plt.title("Agent 1")
         plt.savefig(plot_name + ".pdf")
         plt.clf()
 
-for el in info:
         df2 = pd.read_csv(f'{path_data}/agent2_payoff_{el}.csv')
-
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2.loc[df2['Lookahead'] == 0], ci='sd', label='Lookahead 0')
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2.loc[df2['Lookahead'] == 1], ci='sd',
-                          label='Lookahead 1')
-        ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2.loc[df2['Lookahead'] == 2], ci='sd',
-                          label='Lookahead 2')
+        for l in range(n_lookaheads):
+                ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2.loc[df2['Lookahead'] == l], ci='sd', label=f'Lookahead {l}')
 
         ax.set(ylabel='Scalarised payoff per step')
         ax.set(xlabel='Iterations')
-        ax.set_ylim(0, 6)
+        ax.set_ylim(0, 4)
         ax.set_xlim(0, episodes)
         plot_name = f"{path_plots}/payoffs_ag2_{el}"
         plt.title("Agent 2")
         plt.savefig(plot_name + ".pdf")
         plt.clf()
 
-for el in info:
         for idx in range(n_lookaheads):
                 x_axis_labels = ["L", "M", "R"]
                 y_axis_labels = ["L", "M", "R"]
@@ -88,16 +61,14 @@ for el in info:
                 plt.savefig(plot_name + ".pdf")
                 plt.clf()
 
-
-for el in info:
         for idx in range(n_lookaheads):
                 df1 = pd.read_csv(f'{path_data}/agent1_probs_{el}.csv')
 
                 ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx], ci='sd', label='L')
                 ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx],
-                                  ci='sd', label='R')
-                ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx],
                                   ci='sd', label='M')
+                ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx],
+                                  ci='sd', label='R')
 
                 ax.set(ylabel='Action probability')
                 ax.set(xlabel='Iterations')
@@ -114,9 +85,9 @@ for el in info:
 
                 ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx], ci='sd', label='L')
                 ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx],
-                                  ci='sd', label='R')
-                ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx],
                                   ci='sd', label='M')
+                ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1.loc[df1['Lookahead'] == idx],
+                                  ci='sd', label='R')
 
                 ax.set(ylabel='Action probability')
                 ax.set(xlabel='Iterations')

@@ -10,16 +10,24 @@ def magic_box(x):
 
 
 class AgentBase:
-    def __init__(self, env, hp, utility, other_utility):
+    def __init__(self, env, hp, utility, other_utility, mooc):
+        # own utility function
         self.utility = utility
+        # opponent utility function
         self.other_utility = other_utility
         self.env = env
+        # hyperparameters class
         self.hp = hp
+        # the MO optimisation criterion (SER/ESR)
+        self.mooc = mooc
 
         self.theta = nn.Parameter(torch.zeros(3, requires_grad=True))
         self.theta_optimizer = torch.optim.Adam((self.theta,), lr=hp.lr_out)
         # init values and its optimizer
-        self.values = nn.Parameter(torch.zeros(2, requires_grad=True))
+        if mooc == 'SER':
+            self.values = nn.Parameter(torch.zeros(2, requires_grad=True))
+        elif mooc == 'ESR':
+            self.values = nn.Parameter(torch.zeros(1, requires_grad=True))
         self.value_optimizer = torch.optim.Adam((self.values,), lr=hp.lr_v)
 
     def theta_update(self, objective):
@@ -67,6 +75,8 @@ class AgentBase:
             a1, lp1, v1 = self.act(s1, self.theta, self.values)
             a2, lp2, v2 = self.act(s2, theta, values)
             (s1, s2), (r1, r2), _, _ = self.env.step((a1, a2))
+            if self.mooc == 'ESR':
+                r1 = self.utility(r1)
             memory.add(lp1, lp2, v1, torch.from_numpy(r1).float())
 
         return memory
@@ -75,11 +85,14 @@ class AgentBase:
         self_logprobs = torch.stack(logprobs, dim=1)
         other_logprobs = torch.stack(other_logprobs, dim=1)
         values = torch.stack(values, dim=2).permute(1, 0, 2)
-        rewards = torch.stack(rewards, dim=2)
-
-        # apply discount:
-        cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards[0].size()), dim=1) / self.hp.gamma
-        discounted_rewards, discounted_values = self._apply_discount(cum_discount, rewards, values, utility)
+        if self.mooc == 'SER':
+            rewards = torch.stack(rewards, dim=2)
+            cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards[0].size()), dim=1) / self.hp.gamma
+            discounted_rewards, discounted_values = self._apply_discount_SER(cum_discount, rewards, values, utility)
+        else:
+            rewards = torch.stack(rewards, dim=-1)
+            cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards.size()), dim=1) / self.hp.gamma
+            discounted_rewards, discounted_values = self._apply_discount_ESR(cum_discount, rewards, values)
 
         # stochastic nodes involved in rewards dependencies:
         dependencies = torch.cumsum(self_logprobs + other_logprobs, dim=1)
@@ -98,11 +111,15 @@ class AgentBase:
         return -dice_objective  # want to minimize -objective
 
     def value_loss(self, values, rewards):
-        values = torch.stack(values, dim=1).permute(2, 1, 0)
-        rewards = torch.stack(rewards, dim=1)
+        if self.mooc == 'SER':
+            values = torch.stack(values, dim=1).permute(2, 1, 0)
+            rewards = torch.stack(rewards, dim=1)
+        else:
+            values = torch.stack(values, dim=1)
+            rewards = torch.stack(rewards, dim=1).unsqueeze(2)
         return torch.mean((rewards - values) ** 2)
 
-    def _apply_discount(self, cum_discount, rewards, values, utility):
+    def _apply_discount_SER(self, cum_discount, rewards, values, utility):
         discounted_rewards_o1 = rewards[0] * cum_discount
         discounted_rewards_o2 = rewards[1] * cum_discount
         discounted_values_1 = values[0] * cum_discount
@@ -113,19 +130,29 @@ class AgentBase:
 
         return discounted_rewards, discounted_values
 
+    def _apply_discount_ESR(self, cum_discount, rewards, values):
+        discounted_rewards = rewards * cum_discount
+        discounted_values = values * cum_discount
+
+        return discounted_rewards, discounted_values
+
 
 class Agent1M(AgentBase):
-    def __init__(self, env, hp, utility, other_utility):
+    def __init__(self, env, hp, utility, other_utility, mooc):
         self.utility = utility
         self.other_utility = other_utility
         self.env = env
         self.hp = hp
+        self.mooc = mooc
 
         # init theta and its optimizer
         self.theta = nn.Parameter(torch.zeros([10, 3], requires_grad=True))
         self.theta_optimizer = torch.optim.Adam((self.theta,), lr=hp.lr_out)
         # init values and its optimizer
-        self.values = nn.Parameter(torch.zeros([10, 2], requires_grad=True))
+        if mooc == 'SER':
+            self.values = nn.Parameter(torch.zeros([10, 2], requires_grad=True))
+        else:
+            self.values = nn.Parameter(torch.zeros([10, 1], requires_grad=True))
         self.value_optimizer = torch.optim.Adam((self.values,), lr=hp.lr_v)
 
     def act(self, batch_states, theta, values):

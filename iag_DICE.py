@@ -36,7 +36,7 @@ def step(agent1, agent2):
     return r1, r2, a1, a2
 
 
-def play(agent1, agent2, n_lookaheads, trials, info):
+def play(agent1, agent2, n_lookaheads, trials, info, mooc):
 
     state_distribution_log = np.zeros((iga.action_space[0].n, iga.action_space[1].n))
     print("start iterations with", n_lookaheads, "lookaheads:")
@@ -77,7 +77,7 @@ def play(agent1, agent2, n_lookaheads, trials, info):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/dice'
+    path_data = f'results/dice/{mooc}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -109,7 +109,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-trials', type=int, default=10, help="number of trials")
-    parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
+    parser.add_argument('-lookahead', type=int, default=4, help="number of lookaheads")
+    parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
 
     args = parser.parse_args()
 
@@ -118,11 +119,12 @@ if __name__ == "__main__":
 
     info = ["0M", "1M"]
     n_lookaheads = args.lookahead
+    mooc = args.mooc
     trials = args.trials
     for el in info:
         for i in range(n_lookaheads):
             torch.manual_seed(hp.seed)
             if el == '0M':
-                play(AgentBase(iga, hp, u1, u2), AgentBase(iga, hp, u2, u1), i, trials, el)
+                play(AgentBase(iga, hp, u1, u2, mooc), AgentBase(iga, hp, u2, u1, mooc), i, trials, el, mooc)
             else:
-                play(Agent1M(iga, hp, u1, u2), Agent1M(iga, hp, u2, u1), i, trials, el)
+                play(Agent1M(iga, hp, u1, u2, mooc), Agent1M(iga, hp, u2, u1, mooc), i, trials, el, mooc)
