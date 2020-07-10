@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --time=05:00:00
+#SBATCH --time=48:00:00
 #SBATCH --mem=1gb
 #SBATCH --output=logs/output-%A.out
 #SBATCH --error=logs/err-%A.err
