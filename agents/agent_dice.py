@@ -41,7 +41,7 @@ class AgentBase:
         self.value_optimizer.step()
 
     def in_lookahead(self, other_theta, other_values):
-        other_memory = self.perform_rollout(other_theta, other_values)
+        other_memory = self.perform_rollout(other_theta, other_values, inner=True)
         logprobs, other_logprobs, values, rewards = other_memory.get_content()
 
         other_objective = self.dice_objective(self.other_utility, logprobs, other_logprobs, values, rewards)
@@ -68,7 +68,7 @@ class AgentBase:
         log_probs_actions = m.log_prob(actions)
         return actions.numpy().astype(int), log_probs_actions, values.repeat(self.hp.batch_size, 1)
 
-    def perform_rollout(self, theta, values):
+    def perform_rollout(self, theta, values, inner=False):
         memory = Memory(self.hp)
         (s1, s2), _ = self.env.reset()
         for t in range(self.hp.len_rollout):
@@ -77,7 +77,11 @@ class AgentBase:
             (s1, s2), (r1, r2), _, _ = self.env.step((a1, a2))
             if self.mooc == 'ESR':
                 r1 = self.utility(r1)
-            memory.add(lp1, lp2, v1, torch.from_numpy(r1).float())
+                r2 = self.utility(r2)
+            if inner:
+                memory.add(lp2, lp1, v2, torch.from_numpy(r2).float())
+            else:
+                memory.add(lp1, lp2, v1, torch.from_numpy(r1).float())
 
         return memory
 

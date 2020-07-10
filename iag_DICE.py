@@ -32,7 +32,7 @@ def step(agent1, agent2):
     #for t in range(hp.len_rollout):
     a1, lp1, v1 = agent1.act(s1, theta1, values1)
     a2, lp2, v2 = agent2.act(s2, theta2, values2)
-    (s1, s2), (r1, r2), _, _ = iga.step((a1, a2))
+    (_, _), (r1, r2), _, _ = iga.step((a1, a2))
     return r1, r2, a1, a2
 
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-trials', type=int, default=10, help="number of trials")
-    parser.add_argument('-lookahead', type=int, default=4, help="number of lookaheads")
+    parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
 
     args = parser.parse_args()
