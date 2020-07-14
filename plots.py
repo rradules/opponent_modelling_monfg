@@ -15,10 +15,10 @@ sns.set_style('white', {'axes.edgecolor': "0.5", "pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 info = ["0M", "1M"]
-n_lookaheads = 4
+n_lookaheads = 5
 trials = 10
 
-episodes = 200
+episodes = 500
 mooc = 'ESR'
 path_data = f'results/dice/{mooc}'
 

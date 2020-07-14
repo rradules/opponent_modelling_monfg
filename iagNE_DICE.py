@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import pandas as pd
 
-from envs import IGA
+from envs import IGA_NE
 from utils.hp_dice import Hp
 from agents.agent_dice import AgentBase, Agent1M
 from utils.utils import mkdir_p
@@ -13,7 +13,7 @@ import argparse
 
 hp = Hp()
 
-iga = IGA(hp.len_rollout, hp.batch_size)
+iga = IGA_NE(hp.len_rollout, hp.batch_size)
 
 payoff_episode_log1 = []
 payoff_episode_log2 = []
@@ -77,7 +77,7 @@ def play(agent1, agent2, n_lookaheads, trials, info, mooc):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/IAG/{mooc}'
+    path_data = f'results/IAG_NE/{mooc}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
