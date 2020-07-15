@@ -62,8 +62,9 @@ def play(agent1, agent2, n_lookaheads, trials, info, mooc):
 
             # evaluate progress:
             r1, r2, a1, a2 = step(agent1, agent2)
-            for idx in range(len(a1)):
-                state_distribution_log[a1[idx], a2[idx]] += 1
+            if update >= (0.9*hp.n_update):
+                for idx in range(len(a1)):
+                    state_distribution_log[a1[idx], a2[idx]] += 1
 
             act_probs1 = get_act_probs(a1)
             act_probs2 = get_act_probs(a2)
@@ -83,7 +84,7 @@ def play(agent1, agent2, n_lookaheads, trials, info, mooc):
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
-    state_distribution_log /= hp.batch_size * hp.n_update * trials
+    state_distribution_log /= hp.batch_size * (0.1 * hp.n_update) * trials
     print(np.sum(state_distribution_log))
     df = pd.DataFrame(state_distribution_log)
     df.to_csv(f'{path_data}/states_{info}_{n_lookaheads}.csv', index=False, header=None)

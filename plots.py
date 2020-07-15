@@ -19,12 +19,12 @@ n_lookaheads = 5
 trials = 10
 
 episodes = 500
-mooc = 'ESR'
-path_data = f'results/dice/{mooc}'
+mooc = 'SER'
+path_data = f'results/IAG_NE/{mooc}'
 
 for el in info:
 
-    path_plots = f'plots/dice/{mooc}/{el}'
+    path_plots = f'plots/IAG_NE/{mooc}/{el}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')
@@ -50,7 +50,7 @@ for el in info:
 
     ax.set(ylabel='Scalarised payoff per step')
     ax.set(xlabel='Iterations')
-    ax.set_ylim(0, 4)
+    #ax.set_ylim(0, 4)
     ax.set_xlim(0, episodes)
     plot_name = f"{path_plots}/payoffs_ag2_{el}"
     plt.title("Agent 2")
