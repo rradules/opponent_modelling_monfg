@@ -20,18 +20,11 @@ class ImbalancingActGame(gym.Env):
     NUM_STATES = NUM_ACTIONS * NUM_ACTIONS + 1
     NUM_OBJECTIVES = 2
 
-    def __init__(self, max_steps, batch_size=1):
+    def __init__(self, max_steps, batch_size, payout_mat):
         self.max_steps = max_steps
         self.batch_size = batch_size
 
-        self.payoffsObj1 = np.array([[4, 3, 2],
-                                     [3, 2, 1],
-                                     [2, 1, 0]])
-        self.payoffsObj2 = np.array([[0, 1, 2],
-                                     [1, 2, 3],
-                                     [2, 3, 4]])
-
-        self.payout_mat = [self.payoffsObj1, self.payoffsObj2]
+        self.payout_mat = payout_mat
 
         self.states = np.reshape(np.array(range(self.NUM_ACTIONS**2)) + 1,
                                  (self.NUM_ACTIONS, self.NUM_ACTIONS))

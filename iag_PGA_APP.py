@@ -10,10 +10,7 @@ from agents.agent_pga_app import AgentPGAAPPBase, AgentPGAAPP1M
 from utils.utils import mkdir_p
 from collections import Counter
 import argparse
-
-hp = HpPGA_APP()
-
-iga = IGA(hp.len_rollout, hp.batch_size)
+from envs.monfgs import get_payoff_matrix
 
 payoff_episode_log1 = []
 payoff_episode_log2 = []
@@ -98,16 +95,23 @@ if __name__ == "__main__":
     parser.add_argument('-trials', type=int, default=10, help="number of trials")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
+    parser.add_argument('-game', type=str, default='iga', help="game")
 
     args = parser.parse_args()
 
     u1 = lambda x: x[0] ** 2.0 + x[1] ** 2.0
     u2 = lambda x: x[0] * x[1]
 
-    info = ["1M"] #, "1M"]
+    info = ["0M, 1M"]
     mooc = args.mooc
     seed = args.seed
     trials = args.trials
+    game = args.game
+
+    hp = HpPGA_APP()
+    payout_mat = get_payoff_matrix(game)
+    iga = IGA(hp.len_rollout, hp.batch_size, payout_mat)
+
     for el in info:
         #torch.manual_seed(seed)
         #np.random.seed(seed)

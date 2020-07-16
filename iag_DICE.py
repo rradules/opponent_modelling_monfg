@@ -10,10 +10,7 @@ from agents.agent_lola_dice import AgentDiceBase, AgentDice1M
 from utils.utils import mkdir_p
 from collections import Counter
 import argparse
-
-hp = HpLolaDice()
-
-iga = IGA(hp.len_rollout, hp.batch_size)
+from envs.monfgs import get_payoff_matrix
 
 payoff_episode_log1 = []
 payoff_episode_log2 = []
@@ -113,6 +110,7 @@ if __name__ == "__main__":
     parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
+    parser.add_argument('-game', type=str, default='iga', help="game")
 
     args = parser.parse_args()
 
@@ -124,6 +122,12 @@ if __name__ == "__main__":
     mooc = args.mooc
     seed = args.seed
     trials = args.trials
+    game = args.game
+
+    hp = HpLolaDice()
+    payout_mat = get_payoff_matrix(game)
+    iga = IGA(hp.len_rollout, hp.batch_size, payout_mat)
+
     for el in info:
         for i in range(n_lookaheads):
             torch.manual_seed(seed)
