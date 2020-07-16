@@ -6,7 +6,7 @@ import pandas as pd
 
 from envs import IGA
 from utils.hps import HpPGA_APP
-from agents.agent_pga_app import AgentPGAAPPBase
+from agents.agent_pga_app import AgentPGAAPPBase, AgentPGAAPP1M
 from utils.utils import mkdir_p
 from collections import Counter
 import argparse
@@ -18,6 +18,7 @@ iga = IGA(hp.len_rollout, hp.batch_size)
 payoff_episode_log1 = []
 payoff_episode_log2 = []
 act_hist_log = [[], []]
+
 
 def check_performance(agent1, agent2):
     (s1, s2), _ = iga.reset()
@@ -95,7 +96,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-trials', type=int, default=10, help="number of trials")
-    parser.add_argument('-mooc', type=str, default='ESR', help="MOO criterion")
+    parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     args = parser.parse_args()
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     u1 = lambda x: x[0] ** 2.0 + x[1] ** 2.0
     u2 = lambda x: x[0] * x[1]
 
-    info = ["0M"] #, "1M"]
+    info = ["1M"] #, "1M"]
     mooc = args.mooc
     seed = args.seed
     trials = args.trials
@@ -113,5 +114,5 @@ if __name__ == "__main__":
 
         if el == '0M':
             play(AgentPGAAPPBase(iga, hp, u1, u2, mooc), AgentPGAAPPBase(iga, hp, u2, u1, mooc), trials, el, mooc)
-        #else:
-        #    play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), trials, el, mooc)
+        else:
+            play(AgentPGAAPP1M(iga, hp, u1, u2, mooc), AgentPGAAPP1M(iga, hp, u2, u1, mooc), trials, el, mooc)

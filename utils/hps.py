@@ -12,8 +12,8 @@ class HpLolaDice:
 
 class HpPGA_APP:
     def __init__(self):
-        self.theta = 0.8
-        self.eta = 0.1
+        self.theta = 0.1
+        self.eta = 0.0001
         self.xi = 0
         self.gamma = 1  #0.96
         self.n_update = 1000
