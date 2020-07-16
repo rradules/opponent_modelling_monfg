@@ -5,13 +5,13 @@ import torch
 import pandas as pd
 
 from envs import IGA_NE
-from utils.hp_dice import Hp
-from agents.agent_dice import AgentBase, Agent1M
+from utils.hps import HpLolaDice
+from agents.agent_lola_dice import AgentDiceBase, AgentDice1M
 from utils.utils import mkdir_p
 from collections import Counter
 import argparse
 
-hp = Hp()
+hp = HpLolaDice()
 
 iga = IGA_NE(hp.len_rollout, hp.batch_size)
 
@@ -112,6 +112,7 @@ if __name__ == "__main__":
     parser.add_argument('-trials', type=int, default=10, help="number of trials")
     parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
+    parser.add_argument('-seed', type=int, default=42, help="seed")
 
     args = parser.parse_args()
 
@@ -121,11 +122,13 @@ if __name__ == "__main__":
     info = ["0M", "1M"]
     n_lookaheads = args.lookahead
     mooc = args.mooc
+    seed = args.seed
     trials = args.trials
     for el in info:
         for i in range(n_lookaheads):
-            torch.manual_seed(hp.seed)
+            torch.manual_seed(seed)
+            np.random.seed(seed)
             if el == '0M':
-                play(AgentBase(iga, hp, u1, u2, mooc), AgentBase(iga, hp, u2, u1, mooc), i, trials, el, mooc)
+                play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, el, mooc)
             else:
-                play(Agent1M(iga, hp, u1, u2, mooc), Agent1M(iga, hp, u2, u1, mooc), i, trials, el, mooc)
+                play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, el, mooc)

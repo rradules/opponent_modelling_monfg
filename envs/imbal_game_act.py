@@ -13,10 +13,12 @@ class ImbalancingActGame(gym.Env):
     A two-agent vectorized multi-objective environment.
     Possible actions for each agent are (L)eft, (M)iddle and (R)ight.
     """
+
     NUM_AGENTS = 2
     NUM_ACTIONS = 3
     # s_0 + all action combinations
-    NUM_STATES = 10
+    NUM_STATES = NUM_ACTIONS * NUM_ACTIONS + 1
+    NUM_OBJECTIVES = 2
 
     def __init__(self, max_steps, batch_size=1):
         self.max_steps = max_steps
@@ -31,7 +33,8 @@ class ImbalancingActGame(gym.Env):
 
         self.payout_mat = [self.payoffsObj1, self.payoffsObj2]
 
-        self.states = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        self.states = np.reshape(np.array(range(self.NUM_ACTIONS**2)) + 1,
+                                 (self.NUM_ACTIONS, self.NUM_ACTIONS))
 
         self.action_space = Tuple([
             Discrete(self.NUM_ACTIONS) for _ in range(self.NUM_AGENTS)
@@ -64,3 +67,6 @@ class ImbalancingActGame(gym.Env):
         done = (self.step_count == self.max_steps)
         info = [{'available_actions': aa} for aa in self.available_actions]
         return observation, reward, done, info
+
+    def render(self, mode='human'):
+        pass

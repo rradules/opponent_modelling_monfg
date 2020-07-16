@@ -20,11 +20,11 @@ trials = 10
 
 episodes = 500
 mooc = 'SER'
-path_data = f'results/IAG_NE/{mooc}'
+path_data = f'results/IAG/{mooc}'
 
 for el in info:
 
-    path_plots = f'plots/IAG_NE/{mooc}/{el}'
+    path_plots = f'plots/IAG/{mooc}/{el}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')

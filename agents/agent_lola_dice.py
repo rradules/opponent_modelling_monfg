@@ -9,7 +9,7 @@ def magic_box(x):
     return torch.exp(x - x.detach())
 
 
-class AgentBase:
+class AgentDiceBase:
     def __init__(self, env, hp, utility, other_utility, mooc):
         # own utility function
         self.utility = utility
@@ -21,11 +21,11 @@ class AgentBase:
         # the MO optimisation criterion (SER/ESR)
         self.mooc = mooc
 
-        self.theta = nn.Parameter(torch.zeros(3, requires_grad=True))
+        self.theta = nn.Parameter(torch.zeros(env.NUM_ACTIONS, requires_grad=True))
         self.theta_optimizer = torch.optim.Adam((self.theta,), lr=hp.lr_out)
         # init values and its optimizer
         if mooc == 'SER':
-            self.values = nn.Parameter(torch.zeros(2, requires_grad=True))
+            self.values = nn.Parameter(torch.zeros(env.NUM_OBJECTIVES, requires_grad=True))
         elif mooc == 'ESR':
             self.values = nn.Parameter(torch.zeros(1, requires_grad=True))
         self.value_optimizer = torch.optim.Adam((self.values,), lr=hp.lr_v)
@@ -141,7 +141,7 @@ class AgentBase:
         return discounted_rewards, discounted_values
 
 
-class Agent1M(AgentBase):
+class AgentDice1M(AgentDiceBase):
     def __init__(self, env, hp, utility, other_utility, mooc):
         self.utility = utility
         self.other_utility = other_utility
@@ -150,13 +150,13 @@ class Agent1M(AgentBase):
         self.mooc = mooc
 
         # init theta and its optimizer
-        self.theta = nn.Parameter(torch.zeros([10, 3], requires_grad=True))
+        self.theta = nn.Parameter(torch.zeros([env.NUM_STATES, env.NUM_ACTIONS], requires_grad=True))
         self.theta_optimizer = torch.optim.Adam((self.theta,), lr=hp.lr_out)
         # init values and its optimizer
         if mooc == 'SER':
-            self.values = nn.Parameter(torch.zeros([10, 2], requires_grad=True))
+            self.values = nn.Parameter(torch.zeros([env.NUM_STATES, env.NUM_OBJECTIVES], requires_grad=True))
         else:
-            self.values = nn.Parameter(torch.zeros([10, 1], requires_grad=True))
+            self.values = nn.Parameter(torch.zeros([env.NUM_STATES, 1], requires_grad=True))
         self.value_optimizer = torch.optim.Adam((self.values,), lr=hp.lr_v)
 
     def act(self, batch_states, theta, values):
