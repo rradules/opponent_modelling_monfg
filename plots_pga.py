@@ -18,12 +18,13 @@ info = ["0M"] #, "1M"]
 trials = 10
 
 episodes = 1000
-mooc = 'ESR'
-path_data = f'results/PAG_APP/IAG/{mooc}'
+mooc = 'SER'
+game = 'igaNE'
+path_data = f'results/PAG_APP/{game}/{mooc}'
 
 for el in info:
 
-    path_plots = f'plots/PAG_APP/IAG/{mooc}/{el}'
+    path_plots = f'plots/PAG_APP/{game}/{mooc}/{el}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')

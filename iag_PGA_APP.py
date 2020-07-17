@@ -26,7 +26,7 @@ def check_performance(agent1, agent2):
     return r1, r2, a1, a2
 
 
-def play(agent1, agent2, trials, info, mooc, game):
+def play(agent1, agent2, trials, mem, mooc, game):
 
     state_distribution_log = np.zeros((iga.action_space[0].n, iga.action_space[1].n))
     for trial in range(trials):
@@ -64,20 +64,20 @@ def play(agent1, agent2, trials, info, mooc, game):
     path_data = f'results/PAG_APP/{game}/{mooc}'
     mkdir_p(path_data)
 
-    df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
-    df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
+    df1.to_csv(f'{path_data}/agent1_payoff_{mem}.csv', index=False)
+    df2.to_csv(f'{path_data}/agent2_payoff_{mem}.csv', index=False)
 
     state_distribution_log /= hp.batch_size * (0.1 * hp.n_update) * trials
     print(np.sum(state_distribution_log))
     df = pd.DataFrame(state_distribution_log)
-    df.to_csv(f'{path_data}/states_{info}.csv', index=False, header=None)
+    df.to_csv(f'{path_data}/states_{mem}.csv', index=False, header=None)
 
     columns = ['Episode', 'Trial', 'Action 1', 'Action 2', 'Action 3']
     df1 = pd.DataFrame(act_hist_log[0], columns=columns)
     df2 = pd.DataFrame(act_hist_log[1], columns=columns)
 
-    df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
-    df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
+    df1.to_csv(f'{path_data}/agent1_probs_{mem}.csv', index=False)
+    df2.to_csv(f'{path_data}/agent2_probs_{mem}.csv', index=False)
 
 
 def get_act_probs(actions):
