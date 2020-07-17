@@ -20,4 +20,4 @@ def get_payoff_matrix(game):
     if game == 'iga':
         return [iga_o1, iga_o2]
     elif game == 'igaNE':
-       return [igaNE_o1, igaNE_o2]
+        return [igaNE_o1, igaNE_o2]

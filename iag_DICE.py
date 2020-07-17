@@ -33,7 +33,7 @@ def step(agent1, agent2):
     return r1, r2, a1, a2
 
 
-def play(agent1, agent2, n_lookaheads, trials, info, mooc):
+def play(agent1, agent2, n_lookaheads, trials, info, mooc, game):
 
     state_distribution_log = np.zeros((iga.action_space[0].n, iga.action_space[1].n))
     print("start iterations with", n_lookaheads, "lookaheads:")
@@ -75,7 +75,7 @@ def play(agent1, agent2, n_lookaheads, trials, info, mooc):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/IAG/{mooc}'
+    path_data = f'results/{game}/{mooc}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -134,6 +134,6 @@ if __name__ == "__main__":
             np.random.seed(seed)
 
             if el == '0M':
-                play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, el, mooc)
+                play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)
             else:
-                play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, el, mooc)
+                play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)

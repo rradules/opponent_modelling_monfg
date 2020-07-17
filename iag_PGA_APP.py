@@ -26,7 +26,7 @@ def check_performance(agent1, agent2):
     return r1, r2, a1, a2
 
 
-def play(agent1, agent2, trials, info, mooc):
+def play(agent1, agent2, trials, info, mooc, game):
 
     state_distribution_log = np.zeros((iga.action_space[0].n, iga.action_space[1].n))
     for trial in range(trials):
@@ -61,7 +61,7 @@ def play(agent1, agent2, trials, info, mooc):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/PAG_APP/IAG/{mooc}'
+    path_data = f'results/PAG_APP/{game}/{mooc}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -117,6 +117,6 @@ if __name__ == "__main__":
         #np.random.seed(seed)
 
         if el == '0M':
-            play(AgentPGAAPPBase(iga, hp, u1, u2, mooc), AgentPGAAPPBase(iga, hp, u2, u1, mooc), trials, el, mooc)
+            play(AgentPGAAPPBase(iga, hp, u1, u2, mooc), AgentPGAAPPBase(iga, hp, u2, u1, mooc), trials, el, mooc, game)
         else:
-            play(AgentPGAAPP1M(iga, hp, u1, u2, mooc), AgentPGAAPP1M(iga, hp, u2, u1, mooc), trials, el, mooc)
+            play(AgentPGAAPP1M(iga, hp, u1, u2, mooc), AgentPGAAPP1M(iga, hp, u2, u1, mooc), trials, el, mooc, game)
