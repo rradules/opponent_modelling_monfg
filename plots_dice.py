@@ -14,17 +14,9 @@ sns.set_context("paper", rc={"font.size": 18, "axes.labelsize": 18, "xtick.label
 sns.set_style('white', {'axes.edgecolor': "0.5", "pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
-info = ["0M", "1M"]
-n_lookaheads = 5
-trials = 10
 
-episodes = 500
-mooc = 'SER'
-path_data = f'results/IAG/{mooc}'
-
-for el in info:
-
-    path_plots = f'plots/IAG/{mooc}/{el}'
+def plot_results(game, mooc, el, path_data):
+    path_plots = f'plots/{game}/{mooc}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')
@@ -104,3 +96,19 @@ for el in info:
         plt.title(f"Agent 2 - Lookahead {idx}")
         plt.savefig(plot_name + ".pdf")
         plt.clf()
+
+
+if __name__ == "__main__":
+    info = ["0M", "1M"]
+    n_lookaheads = 5
+    trials = 10
+
+    episodes = 1000
+    moocs = ['SER', 'ESR']
+    games = ['iga', 'igaNE']
+
+    for mooc in moocs:
+        for game in games:
+            path_data = f'results/{game}/{mooc}'
+            for el in info:
+                plot_results(game, mooc, el, path_data)

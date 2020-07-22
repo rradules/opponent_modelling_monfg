@@ -31,18 +31,19 @@ def play(agent1, agent2, trials, mem, mooc, game):
     state_distribution_log = np.zeros((iga.action_space[0].n, iga.action_space[1].n))
     for trial in range(trials):
         print(f'Starting trial {trial}...')
-        (s1, s2), _ = iga.reset()
 
         for update in range(hp.n_update):
-            # step in the env (batch size)
-            a1 = agent1.act(s1)
-            a2 = agent2.act(s2)
+            (s1, s2), _ = iga.reset()
+            for roll in range(hp.len_rollout):
+                # step in the env (batch size)
+                a1 = agent1.act(s1)
+                a2 = agent2.act(s2)
 
-            (s1, s2), (r1, r2), _, _ = iga.step((a1, a2))
+                (s1, s2), (r1, r2), _, _ = iga.step((a1, a2))
 
-            # update own parameters
-            agent1.perform_update(a1, s1, r1)
-            agent1.perform_update(a2, s2, r2)
+                # update own parameters
+                agent1.perform_update(a1, s1, r1)
+                agent1.perform_update(a2, s2, r2)
 
             rew1, rew2, act1, act2 = check_performance(agent1, agent2)
             if update >= (0.9*hp.n_update):
@@ -61,7 +62,7 @@ def play(agent1, agent2, trials, mem, mooc, game):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/PAG_APP/{game}/{mooc}'
+    path_data = f'results/PGA_APP/{game}/{mooc}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{mem}.csv', index=False)

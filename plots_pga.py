@@ -14,25 +14,17 @@ sns.set_context("paper", rc={"font.size": 18, "axes.labelsize": 18, "xtick.label
 sns.set_style('white', {'axes.edgecolor': "0.5", "pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
-info = ["0M"] #, "1M"]
-trials = 10
 
-episodes = 1000
-mooc = 'SER'
-game = 'igaNE'
-path_data = f'results/PAG_APP/{game}/{mooc}'
-
-for el in info:
-
-    path_plots = f'plots/PAG_APP/{game}/{mooc}/{el}'
+def plot_results(game, mooc, mem, path_data):
+    path_plots = f'plots/PGA_APP/{game}/{mooc}'
     mkdir_p(path_plots)
 
-    df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')
+    df1 = pd.read_csv(f'{path_data}/agent1_payoff_{mem}.csv')
 
     ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1, ci='sd',
                           label=f'Agent 1')
 
-    df2 = pd.read_csv(f'{path_data}/agent2_payoff_{el}.csv')
+    df2 = pd.read_csv(f'{path_data}/agent2_payoff_{mem}.csv')
 
     ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2, ci='sd',
                           label=f'Agent 2')
@@ -41,7 +33,7 @@ for el in info:
     ax.set(xlabel='Iterations')
     #ax.set_ylim(0, 4)
     ax.set_xlim(0, episodes)
-    plot_name = f"{path_plots}/payoffs_{el}"
+    plot_name = f"{path_plots}/payoffs_{mem}"
     plt.title("Scalarised Expected Payoffs")
     plt.savefig(plot_name + ".pdf")
     plt.clf()
@@ -51,15 +43,15 @@ for el in info:
     x_axis_labels = ["L", "M", "R"]
     y_axis_labels = ["L", "M", "R"]
 
-    df = pd.read_csv(f'{path_data}/states_{el}.csv', header=None)
+    df = pd.read_csv(f'{path_data}/states_{mem}.csv', header=None)
     ax = sns.heatmap(df, annot=True, cmap="YlGnBu", vmin=0, vmax=1, xticklabels=x_axis_labels,
                      yticklabels=y_axis_labels)
-    plot_name = f"{path_plots}/states_{el}"
+    plot_name = f"{path_plots}/states_{mem}"
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
     # action probs
-    df1 = pd.read_csv(f'{path_data}/agent1_probs_{el}.csv')
+    df1 = pd.read_csv(f'{path_data}/agent1_probs_{mem}.csv')
     ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1, ci='sd',
                       label='L')
     ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1,
@@ -71,12 +63,12 @@ for el in info:
     ax.set(xlabel='Iterations')
     ax.set_ylim(0, 1)
     ax.set_xlim(0, episodes)
-    plot_name = f"{path_plots}/probs_ag1_{el}"
+    plot_name = f"{path_plots}/probs_ag1_{mem}"
     plt.title(f"Agent 1")
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
-    df1 = pd.read_csv(f'{path_data}/agent2_probs_{el}.csv')
+    df1 = pd.read_csv(f'{path_data}/agent2_probs_{mem}.csv')
 
     ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1, ci='sd',
                       label='L')
@@ -89,7 +81,22 @@ for el in info:
     ax.set(xlabel='Iterations')
     ax.set_ylim(0, 1)
     ax.set_xlim(0, episodes)
-    plot_name = f"{path_plots}/probs_ag2_{el}"
+    plot_name = f"{path_plots}/probs_ag2_{mem}"
     plt.title(f"Agent 2")
     plt.savefig(plot_name + ".pdf")
     plt.clf()
+
+
+if __name__ == "__main__":
+    info = ["0M", "1M"]
+    trials = 10
+
+    episodes = 1000
+    moocs = ['SER', 'ESR']
+    games = ['iga', 'igaNE']
+
+    for mooc in moocs:
+        for game in games:
+            path_data = f'results/PGA_APP/{game}/{mooc}'
+            for mem in info:
+                plot_results(game, mooc, mem, path_data)
