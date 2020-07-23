@@ -23,36 +23,30 @@ class AgentPGAAPPBase:
             self.qvalues = torch.zeros(env.NUM_ACTIONS)
 
     def act(self, batch_states):
-        # TODO: ensure enough exploration
+        # TODO: paper says to ensure enough exploration, add epsilon greedy?
         batch_states = torch.from_numpy(batch_states).long()
-        probs = self.pi #torch.sigmoid(self.pi)
-
+        probs = self.pi
         m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
         return actions.numpy().astype(int)
 
     def perform_update(self, action, _, reward):
-        if self.mooc == 'ESR':
-            reward = self.utility(reward)
-
-        reward = torch.from_numpy(reward).float()
-        if self.mooc == 'ESR':
-            max_qs, _ = torch.max(self.qvalues, dim=0)
-        else:
-            max_qs, _ = torch.max(self.qvalues, dim=1)
-
         if self.mooc == 'SER':
+            max_qs, _ = torch.max(self.qvalues, dim=1)
+            reward = torch.from_numpy(reward).float()
+
             for i, a in enumerate(action):
                 self.qvalues[:, a] = (1 - self.hp.theta) * self.qvalues[:, a] + \
                                      self.hp.theta * (reward[:, i] + (self.hp.xi * max_qs))
+            qvalues = self.utility(self.qvalues)
         else:
+            reward = self.utility(reward)
+            max_qs, _ = torch.max(self.qvalues, dim=0)
+            reward = torch.from_numpy(reward).float()
+
             for i, a in enumerate(action):
                 self.qvalues[a] = (1 - self.hp.theta) * self.qvalues[a] + \
                                      self.hp.theta * (reward[i] + (self.hp.xi * max_qs))
-
-        if self.mooc == 'SER':
-            qvalues = self.utility(self.qvalues)
-        else:
             qvalues = self.qvalues
 
         values = torch.sum(self.pi * qvalues)
@@ -76,35 +70,30 @@ class AgentPGAAPP1M(AgentPGAAPPBase):
 
         self.pi = torch.rand((env.NUM_ACTIONS, env.NUM_STATES))
         self.pi /= torch.sum(self.pi)
-
-        # init values and its optimizer
+        # init q-values
         if mooc == 'SER':
             self.qvalues = torch.zeros((env.NUM_OBJECTIVES, env.NUM_ACTIONS, env.NUM_STATES))
         elif mooc == 'ESR':
             self.qvalues = torch.zeros((env.NUM_ACTIONS, env.NUM_STATES))
 
     def perform_update(self, action, state, reward):
-        if self.mooc == 'ESR':
-            reward = self.utility(reward)
-        reward = torch.from_numpy(reward).float()
-
-        if self.mooc == 'ESR':
-            max_qs, _ = torch.max(self.qvalues, dim=0)
-        else:
+        if self.mooc == 'SER':
+            reward = torch.from_numpy(reward).float()
             max_qs, _ = torch.max(self.qvalues, dim=1)
 
-        if self.mooc == 'SER':
             for i, (a, s) in enumerate(zip(action, state)):
                 self.qvalues[:, a, s] = (1 - self.hp.theta) * self.qvalues[:, a, s] + \
                                      self.hp.theta * (reward[:, i] + (self.hp.xi * max_qs[:, s]))
+            qvalues = self.utility(self.qvalues)
+
         else:
+            reward = self.utility(reward)
+            max_qs, _ = torch.max(self.qvalues, dim=0)
+            reward = torch.from_numpy(reward).float()
+
             for i, (a, s) in enumerate(zip(action, state)):
                 self.qvalues[a, s] = (1 - self.hp.theta) * self.qvalues[a, s] + \
                                      self.hp.theta * (reward[i] + (self.hp.xi * max_qs[s]))
-
-        if self.mooc == 'SER':
-            qvalues = self.utility(self.qvalues)
-        else:
             qvalues = self.qvalues
 
         values = torch.sum(self.pi * qvalues, dim=0)
@@ -123,7 +112,7 @@ class AgentPGAAPP1M(AgentPGAAPPBase):
         self.pi /= torch.sum(self.pi)
 
     def act(self, batch_states):
-        # TODO: ensure enough exploration
+        # TODO: paper says to ensure enough exploration, add epsilon greedy?
         batch_states = torch.from_numpy(batch_states).long()
         probs = self.pi[:, batch_states].permute(1, 0)
         m = Categorical(probs)
