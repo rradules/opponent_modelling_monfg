@@ -20,3 +20,8 @@ class HpPGA_APP:
         self.n_update = 1000
         self.len_rollout = 50
         self.batch_size = 64
+
+    #TODO: integrate a decaying learning rate for PGA APP?
+    def update_lr(self, timestep):
+        self.eta = 5.0 / (500 + timestep)
+        self.theta = 5.0 / (10 + timestep)

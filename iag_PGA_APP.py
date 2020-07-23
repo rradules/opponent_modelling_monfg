@@ -34,6 +34,7 @@ def play(agent1, agent2, trials, mem, mooc, game):
 
         for update in range(hp.n_update):
             (s1, s2), _ = iga.reset()
+            hp.update_lr()
             for roll in range(hp.len_rollout):
                 # step in the env (batch size)
                 a1 = agent1.act(s1)
@@ -46,6 +47,8 @@ def play(agent1, agent2, trials, mem, mooc, game):
                 agent1.perform_update(a2, s2, r2)
 
             rew1, rew2, act1, act2 = check_performance(agent1, agent2)
+
+            # record state distribution for the last 10% updates
             if update >= (0.9*hp.n_update):
                 for idx in range(len(act1)):
                     state_distribution_log[act1[idx], act2[idx]] += 1
