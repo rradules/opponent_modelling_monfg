@@ -60,8 +60,11 @@ class AgentPGAAPPBase:
                                      self.hp.theta * (reward[i] + (self.hp.xi * max_qs))
             qvalues = self.qvalues
 
-        values = torch.sum(self.pi * qvalues)
 
+        #print("Qvalues: ", qvalues)
+        values = torch.sum(self.pi * qvalues)
+        #print("Values: ", values)
+        #print("Q-V: ", qvalues - values)
         for a in range(self.env.NUM_ACTIONS):
             if self.pi[a].numpy() == 1.0:
                 delta_hat = qvalues[a] - values
@@ -124,10 +127,10 @@ class AgentPGAAPP1M(AgentPGAAPPBase):
         self.pi += self.hp.eta * delta
 
         # projection to valid strategy space
-        print("Pi: ", self.pi)
+        # print("Pi: ", self.pi)
         for a in range(self.env.NUM_ACTIONS):
             self.pi[a] = torch.max(torch.FloatTensor([torch.min(torch.FloatTensor([self.pi[a], 1])), 0]))
-        # self.pi /= torch.sum(self.pi)
+        self.pi /= torch.sum(self.pi)
 
     def act(self, batch_states):
         # TODO: paper says to ensure enough exploration, add epsilon greedy?
