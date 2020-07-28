@@ -34,7 +34,7 @@ def play(agent1, agent2, trials, mem, mooc, game):
 
         for update in range(hp.n_update):
             (s1, s2), _ = iga.reset()
-            hp.update_lr()
+            hp.update_lr(update)
             for roll in range(hp.len_rollout):
                 # step in the env (batch size)
                 a1 = agent1.act(s1)
@@ -44,7 +44,7 @@ def play(agent1, agent2, trials, mem, mooc, game):
 
                 # update own parameters
                 agent1.perform_update(a1, s1, r1)
-                agent1.perform_update(a2, s2, r2)
+                agent2.perform_update(a2, s2, r2)
 
             rew1, rew2, act1, act2 = check_performance(agent1, agent2)
 

@@ -1,9 +1,10 @@
 import torch
 from torch.distributions import Categorical
+import numpy as np
 
 
 class AgentPGAAPPBase:
-    def __init__(self, env, hp, utility, other_utility, mooc):
+    def __init__(self, env, hp, utility, other_utility, mooc, init_pi=None):
         # own utility function
         self.utility = utility
         # opponent utility function
@@ -13,9 +14,13 @@ class AgentPGAAPPBase:
         self.hp = hp
         # the MO optimisation criterion (SER/ESR)
         self.mooc = mooc
+        self.epsilon = 0.05
+        if init_pi:
+            self.pi = torch.FloatTensor(init_pi)
+        else:
+            self.pi = torch.rand(env.NUM_ACTIONS)
+            self.pi /= torch.sum(self.pi)
 
-        self.pi = torch.rand(env.NUM_ACTIONS)
-        self.pi /= torch.sum(self.pi)
         # init values and its optimizer
         if mooc == 'SER':
             self.qvalues = torch.zeros((env.NUM_OBJECTIVES, env.NUM_ACTIONS))
@@ -23,9 +28,12 @@ class AgentPGAAPPBase:
             self.qvalues = torch.zeros(env.NUM_ACTIONS)
 
     def act(self, batch_states):
-        # TODO: paper says to ensure enough exploration, add epsilon greedy?
+        rand = np.random.rand()
         batch_states = torch.from_numpy(batch_states).long()
-        probs = self.pi
+        if rand < self.epsilon:
+            probs = torch.from_numpy(np.ones(self.env.NUM_ACTIONS) * (1.0/self.env.NUM_ACTIONS))
+        else:
+            probs = self.pi
         m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
         return actions.numpy().astype(int)
@@ -35,34 +43,39 @@ class AgentPGAAPPBase:
             max_qs, _ = torch.max(self.qvalues, dim=1)
             reward = torch.from_numpy(reward).float()
 
+            # for each action in the batch
             for i, a in enumerate(action):
                 self.qvalues[:, a] = (1 - self.hp.theta) * self.qvalues[:, a] + \
                                      self.hp.theta * (reward[:, i] + (self.hp.xi * max_qs))
             qvalues = self.utility(self.qvalues)
+
         else:
             reward = self.utility(reward)
             max_qs, _ = torch.max(self.qvalues, dim=0)
             reward = torch.from_numpy(reward).float()
 
+            # for each action in the batch
             for i, a in enumerate(action):
                 self.qvalues[a] = (1 - self.hp.theta) * self.qvalues[a] + \
                                      self.hp.theta * (reward[i] + (self.hp.xi * max_qs))
             qvalues = self.qvalues
 
         values = torch.sum(self.pi * qvalues)
-        delta_hat = torch.zeros(self.env.NUM_ACTIONS)
-        delta = torch.zeros(self.env.NUM_ACTIONS)
 
         for a in range(self.env.NUM_ACTIONS):
             if self.pi[a].numpy() == 1.0:
-                delta_hat[a] = qvalues[a] - values
+                delta_hat = qvalues[a] - values
             else:
-                delta_hat[a] = (qvalues[a] - values)/(1 - self.pi[a])
+                delta_hat = (qvalues[a] - values)/(1 - self.pi[a])
 
-        delta -= self.hp.gamma * torch.abs(delta_hat) * self.pi
-        self.pi += self.hp.eta * delta
+            delta = delta_hat - self.hp.gamma * torch.abs(delta_hat) * self.pi[a]
+            # print("Delta: ", delta)
+            self.pi[a] = self.pi[a] + self.hp.eta * delta
+
+        # projection to valid strategy space
+        for a in range(self.env.NUM_ACTIONS):
+            self.pi[a] = torch.max(torch.FloatTensor([torch.min(torch.FloatTensor([self.pi[a], 1])), 0]))
         self.pi /= torch.sum(self.pi)
-
 
 class AgentPGAAPP1M(AgentPGAAPPBase):
     def __init__(self, env, hp, utility, other_utility, mooc):
@@ -98,7 +111,7 @@ class AgentPGAAPP1M(AgentPGAAPPBase):
 
         values = torch.sum(self.pi * qvalues, dim=0)
         delta_hat = torch.zeros(self.env.NUM_ACTIONS, self.env.NUM_STATES)
-        delta = torch.zeros(self.env.NUM_ACTIONS, self.env.NUM_STATES)
+        #delta = torch.zeros(self.env.NUM_ACTIONS, self.env.NUM_STATES)
 
         for s in state:
             for a in range(self.env.NUM_ACTIONS):
@@ -107,9 +120,14 @@ class AgentPGAAPP1M(AgentPGAAPPBase):
                 else:
                     delta_hat[a, s] = (qvalues[a, s] - values[s])/(1 - self.pi[a, s])
 
-        delta -= self.hp.gamma * torch.abs(delta_hat) * self.pi
+        delta = delta_hat - self.hp.gamma * torch.abs(delta_hat) * self.pi
         self.pi += self.hp.eta * delta
-        self.pi /= torch.sum(self.pi)
+
+        # projection to valid strategy space
+        print("Pi: ", self.pi)
+        for a in range(self.env.NUM_ACTIONS):
+            self.pi[a] = torch.max(torch.FloatTensor([torch.min(torch.FloatTensor([self.pi[a], 1])), 0]))
+        # self.pi /= torch.sum(self.pi)
 
     def act(self, batch_states):
         # TODO: paper says to ensure enough exploration, add epsilon greedy?
