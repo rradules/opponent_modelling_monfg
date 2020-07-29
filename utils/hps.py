@@ -13,18 +13,18 @@ class HpLolaDice:
 class HpPGA_APP:
     def __init__(self):
         #TODO: figure out param values
-        self.theta = 0.1
-        self.eta = 0.01
+        self.theta = 0.5
+        self.eta = 0.001
         self.xi = 0
         self.gamma = 1  #not RL gamma, more like a lookahead
         self.n_update = 1000
         self.len_rollout = 50
         self.batch_size = 64
+        self.epsilon = 0.05
 
-    #TODO: integrate a decaying learning rate for PGA APP?
     def update_lr(self, timestep):
-        self.eta = 5.0 / (500 + timestep)
-        self.theta = 5.0 / (10 + timestep)
+        self.eta = 5.0 / (5000 + timestep)
+        #self.theta = 5.0 / (10 + timestep)
 
 
 class HpPGA_APP_test:
@@ -36,6 +36,7 @@ class HpPGA_APP_test:
         self.n_update = 20000
         self.len_rollout = 1
         self.batch_size = 1
+        self.epsilon = 0.05
 
     def update_lr(self, timestep):
         self.eta = 5.0 / (5000 + timestep)

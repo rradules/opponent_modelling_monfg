@@ -96,7 +96,7 @@ def get_act_probs(actions):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=5, help="number of trials")
+    parser.add_argument('-trials', type=int, default=10, help="number of trials")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-game', type=str, default='iga', help="game")

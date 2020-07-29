@@ -14,7 +14,6 @@ class AgentPGAAPPBase:
         self.hp = hp
         # the MO optimisation criterion (SER/ESR)
         self.mooc = mooc
-        self.epsilon = 0.05
         if init_pi:
             self.pi = torch.FloatTensor(init_pi)
         else:
@@ -30,9 +29,11 @@ class AgentPGAAPPBase:
     def act(self, batch_states):
         rand = np.random.rand()
         batch_states = torch.from_numpy(batch_states).long()
-        if rand < self.epsilon:
+        if rand < self.hp.epsilon:
+            # set equal probabilities for all actions
             probs = torch.from_numpy(np.ones(self.env.NUM_ACTIONS) * (1.0/self.env.NUM_ACTIONS))
         else:
+            # set probabilities according to the policy
             probs = self.pi
         m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
@@ -76,11 +77,14 @@ class AgentPGAAPPBase:
             self.pi[a] = self.pi[a] + self.hp.eta * delta
 
         # projection to valid strategy space
-        for a in range(self.env.NUM_ACTIONS):
-            self.pi[a] = torch.max(torch.FloatTensor([torch.min(torch.FloatTensor([self.pi[a], 1])), 0]))
+        self.pi = torch.clamp(self.pi, max=1)
+        self.pi = torch.clamp(self.pi, min=0)
+
         self.pi /= torch.sum(self.pi)
 
+
 class AgentPGAAPP1M(AgentPGAAPPBase):
+
     def __init__(self, env, hp, utility, other_utility, mooc):
         super().__init__(env, hp, utility, other_utility, mooc)
 
@@ -113,29 +117,35 @@ class AgentPGAAPP1M(AgentPGAAPPBase):
             qvalues = self.qvalues
 
         values = torch.sum(self.pi * qvalues, dim=0)
-        delta_hat = torch.zeros(self.env.NUM_ACTIONS, self.env.NUM_STATES)
+        #delta_hat = torch.zeros(self.env.NUM_ACTIONS, self.env.NUM_STATES)
         #delta = torch.zeros(self.env.NUM_ACTIONS, self.env.NUM_STATES)
 
         for s in state:
             for a in range(self.env.NUM_ACTIONS):
                 if self.pi[a, s].numpy() == 1.0:
-                    delta_hat[a, s] = qvalues[a, s] - values[s]
+                    delta_hat = qvalues[a, s] - values[s]
                 else:
-                    delta_hat[a, s] = (qvalues[a, s] - values[s])/(1 - self.pi[a, s])
+                    delta_hat = (qvalues[a, s] - values[s])/(1 - self.pi[a, s])
 
-        delta = delta_hat - self.hp.gamma * torch.abs(delta_hat) * self.pi
-        self.pi += self.hp.eta * delta
+                delta = delta_hat - self.hp.gamma * torch.abs(delta_hat) * self.pi[a, s]
+                self.pi[a, s] += self.hp.eta * delta
 
         # projection to valid strategy space
-        # print("Pi: ", self.pi)
-        for a in range(self.env.NUM_ACTIONS):
-            self.pi[a] = torch.max(torch.FloatTensor([torch.min(torch.FloatTensor([self.pi[a], 1])), 0]))
+        self.pi = torch.clamp(self.pi, max=1)
+        self.pi = torch.clamp(self.pi, min=0)
+
         self.pi /= torch.sum(self.pi)
 
     def act(self, batch_states):
-        # TODO: paper says to ensure enough exploration, add epsilon greedy?
+        rand = np.random.rand()
         batch_states = torch.from_numpy(batch_states).long()
-        probs = self.pi[:, batch_states].permute(1, 0)
+        if rand < self.hp.epsilon:
+            # set equal probabilities for all actions
+            probs = torch.from_numpy(np.ones(self.env.NUM_ACTIONS) * (1.0 / self.env.NUM_ACTIONS))
+            probs = probs.repeat(self.hp.batch_size, 1)
+        else:
+            # set probabilities according to the policy, for every state in the batch
+            probs = self.pi[:, batch_states].permute(1, 0)
         m = Categorical(probs)
         actions = m.sample()
         return actions.numpy().astype(int)

@@ -17,7 +17,7 @@ class ImbalancingActGame(gym.Env):
     NUM_AGENTS = 2
     NUM_ACTIONS = 3
     # s_0 + all action combinations
-    NUM_STATES = NUM_ACTIONS * NUM_ACTIONS + 1
+    NUM_STATES = NUM_ACTIONS**2 + 1
     NUM_OBJECTIVES = 2
 
     def __init__(self, max_steps, batch_size, payout_mat):
