@@ -35,7 +35,6 @@ class HpPGA_APP_test:
         self.gamma = 3  #not RL gamma, more like a lookahead
         self.n_update = 20000
         self.len_rollout = 1
-        self.batch_size = 1
         self.epsilon = 0.05
 
     def update_lr(self, timestep):

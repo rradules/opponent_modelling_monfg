@@ -7,11 +7,8 @@ import torch.nn as nn
 from torch.distributions import Bernoulli
 from copy import deepcopy
 
-from utils.hps import Hp
+from utils.hps import HpLolaDice
 from envs import IGA
-
-hp = Hp()
-iga = IGA(hp.len_rollout, hp.batch_size)
 
 
 def step(theta1, theta2, values1, values2):
@@ -88,15 +85,36 @@ def play(agent1, agent2, n_lookaheads):
 
 # plot progress:
 if __name__=="__main__":
+    parser = argparse.ArgumentParser()
 
-    colors = ['b','c','m','r']
+    parser.add_argument('-trials', type=int, default=10, help="number of trials")
+    parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
+    parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
+    parser.add_argument('-seed', type=int, default=42, help="seed")
+    parser.add_argument('-game', type=str, default='iga', help="game")
 
-    for i in range(4):
-        torch.manual_seed(hp.seed)
-        scores = play(Agent(), Agent(), i)
-        plt.plot(scores, colors[i], label=str(i)+" lookaheads")
+    args = parser.parse_args()
 
-    plt.legend()
-    plt.xlabel('rollouts', fontsize=20)
-    plt.ylabel('joint score', fontsize=20)
-    plt.show()
+    u1 = lambda x: x[0] ** 2 + x[1] ** 2
+    u2 = lambda x: x[0] * x[1]
+
+    info = ["0M", "1M"]
+    n_lookaheads = args.lookahead
+    mooc = args.mooc
+    seed = args.seed
+    trials = args.trials
+    game = args.game
+
+    hp = HpLolaDice()
+    payout_mat = get_payoff_matrix(game)
+    iga = IGA(hp.len_rollout, hp.batch_size, payout_mat)
+
+    for el in info:
+        for i in range(n_lookaheads):
+            torch.manual_seed(seed)
+            np.random.seed(seed)
+
+            if el == '0M':
+                play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)
+            else:
+                play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)

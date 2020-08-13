@@ -15,16 +15,16 @@ sns.set_style('white', {'axes.edgecolor': "0.5", "pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 
-def plot_results(game, mooc, mem, path_data):
+def plot_results(game, path_data):
     path_plots = f'plots/PGA_test/{game}'
     mkdir_p(path_plots)
 
-    df1 = pd.read_csv(f'{path_data}/agent1_payoff_{mem}.csv')
+    df1 = pd.read_csv(f'{path_data}/agent1_payoff.csv')
 
     ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1, ci='sd',
                           label=f'Agent 1')
 
-    df2 = pd.read_csv(f'{path_data}/agent2_payoff_{mem}.csv')
+    df2 = pd.read_csv(f'{path_data}/agent2_payoff.csv')
 
     ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2, ci='sd',
                           label=f'Agent 2')
@@ -33,7 +33,7 @@ def plot_results(game, mooc, mem, path_data):
     ax.set(xlabel='Iterations')
     #ax.set_ylim(0, 1)
     ax.set_xlim(0, episodes)
-    plot_name = f"{path_plots}/payoffs_{mem}"
+    plot_name = f"{path_plots}/payoffs"
     plt.title("Scalarised Expected Payoffs")
     plt.savefig(plot_name + ".pdf")
     plt.clf()
@@ -47,20 +47,20 @@ def plot_results(game, mooc, mem, path_data):
         x_axis_labels = ["1", "2", "3"]
         y_axis_labels = ["1", "2", "3"]
 
-    df = pd.read_csv(f'{path_data}/states_{mem}.csv', header=None)
+    df = pd.read_csv(f'{path_data}/states.csv', header=None)
     ax = sns.heatmap(df, annot=True, cmap="YlGnBu", vmin=0, vmax=1, xticklabels=x_axis_labels,
                      yticklabels=y_axis_labels)
-    plot_name = f"{path_plots}/states_{mem}"
+    plot_name = f"{path_plots}/states"
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
     if game == "MP":
         # action probs
-        df1 = pd.read_csv(f'{path_data}/agent1_probs_{mem}.csv')
+        df1 = pd.read_csv(f'{path_data}/agent1_probs.csv')
         ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1, ci='sd',
                           label='Agent 1')
 
-        df1 = pd.read_csv(f'{path_data}/agent2_probs_{mem}.csv')
+        df1 = pd.read_csv(f'{path_data}/agent2_probs.csv')
 
         ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1, ci='sd',
                           label='Agent 2')
@@ -69,13 +69,13 @@ def plot_results(game, mooc, mem, path_data):
         ax.set(xlabel='Iterations')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, episodes)
-        plot_name = f"{path_plots}/probs_actions_{mem}"
+        plot_name = f"{path_plots}/probs_actions"
         plt.title(f"Probability of Action 1")
         plt.savefig(plot_name + ".pdf")
         plt.clf()
     else:
         # action probs
-        df1 = pd.read_csv(f'{path_data}/agent1_probs_{mem}.csv')
+        df1 = pd.read_csv(f'{path_data}/agent1_probs.csv')
         ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1, ci='sd',
                           label='Action 1')
         ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1, ci='sd',
@@ -86,12 +86,12 @@ def plot_results(game, mooc, mem, path_data):
         ax.set(xlabel='Iterations')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, episodes)
-        plot_name = f"{path_plots}/probs_agent1_{mem}"
+        plot_name = f"{path_plots}/probs_agent1"
         plt.title(f"Probability of Agent 1")
         plt.savefig(plot_name + ".pdf")
         plt.clf()
 
-        df1 = pd.read_csv(f'{path_data}/agent2_probs_{mem}.csv')
+        df1 = pd.read_csv(f'{path_data}/agent2_probs.csv')
         ax = sns.lineplot(x='Episode', y='Action 1', linewidth=2.0, data=df1, ci='sd',
                           label='Action 1')
         ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1, ci='sd',
@@ -103,20 +103,16 @@ def plot_results(game, mooc, mem, path_data):
         ax.set(xlabel='Iterations')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, episodes)
-        plot_name = f"{path_plots}/probs_agent2_{mem}"
+        plot_name = f"{path_plots}/probs_agent2"
         plt.title(f"Probability of Agent 2")
         plt.savefig(plot_name + ".pdf")
         plt.clf()
 
 
 if __name__ == "__main__":
-    info = ["0M"]
 
     episodes = 20000
-    moocs = ['ESR']
     game = 'MP'
 
-    for mooc in moocs:
-        path_data = f'results/PGA_test/{game}/{mooc}'
-        for mem in info:
-            plot_results(game, mooc, mem, path_data)
+    path_data = f'results/PGA_test/{game}'
+    plot_results(game, path_data)
