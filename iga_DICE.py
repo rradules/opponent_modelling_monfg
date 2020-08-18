@@ -111,7 +111,8 @@ if __name__ == "__main__":
     parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-baseline', type=bool, default=False, help="Variance reduction")
+    parser.add_argument('-baseline', action='store_true', help="Variance reduction")
+    parser.add_argument('-no-baseline', action='store_false', help="Variance reduction")
     parser.add_argument('-game', type=str, default='iga', help="game")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
 
