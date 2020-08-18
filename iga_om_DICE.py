@@ -1,59 +1,55 @@
 # coding: utf-8
-
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
-from torch.distributions import Bernoulli
+import pandas as pd
+
+from envs import IGA
+from utils.hps import HpLolaDice
+from agents.agent_lola_dice import AgentDiceBase, AgentDice1M
+from utils.utils import mkdir_p
+from collections import Counter
+import argparse
+from envs.monfgs import get_payoff_matrix
 from copy import deepcopy
 
-from utils.hps import HpLolaDice
-from envs import IGA
+payoff_episode_log1 = []
+payoff_episode_log2 = []
+act_hist_log = [[], []]
+
+def estimate_policy0M(actions):
+    return get_act_probs(actions)
+
+def estimate_values(reward):
 
 
-def step(theta1, theta2, values1, values2):
-    (s1, s2), _ = ipd.reset()
-    score1 = 0
-    score2 = 0
-    freq1 = np.ones(5)
-    freq2 = np.ones(5)
-    n1 = 2*np.ones(5)
-    n2 = 2*np.ones(5)
+def step0M(agent1, agent2):
+    #theta1, theta2, values1, values2
+    (s1, s2), _ = env.reset()
     for t in range(hp.len_rollout):
         s1_ = deepcopy(s1)
         s2_ = deepcopy(s2)
-        a1, lp1, v1 = act(s1, theta1, values1)
-        a2, lp2, v2 = act(s2, theta2, values2)
-        (s1, s2), (r1, r2),_,_ = iga.step((a1, a2))
-        # cumulate scores
-        score1 += np.mean(r1)/float(hp.len_rollout)
-        score2 += np.mean(r2)/float(hp.len_rollout)
-        # count actions
-        for i,s in enumerate(s1_):
-            freq1[int(s)] += (s2==3).astype(float)[i]
-            freq1[int(s)] += (s2==1).astype(float)[i]
-            n1[int(s)] += 1
-
-        for i,s in enumerate(s2_):
-            freq2[int(s)] += (s1==3).astype(float)[i]
-            freq2[int(s)] += (s1==1).astype(float)[i]
-            n2[int(s)] += 1
+        a1, lp1, v1 = agent1.act(s1, agent1.theta, agent1.values)
+        a2, lp2, v2 = agent2.act(s2, agent2.theta, agent2.values)
+        (s1, s2), (r1, r2), _, _ = env.step((a1, a2))
+    # one can also use r1 and r2 to estimate opponent values
+    # in our case we can use our own, since it is a team reward setting
 
     # infer opponent's parameters
-    theta1_ = -np.log(n1/freq1 - 1)
-    theta2_ = -np.log(n2/freq2 - 1)
+    theta1_ = -np.log(estimate_policy0M(a1))
+    theta2_ = -np.log(estimate_policy0M(a2))
     theta1_ = torch.from_numpy(theta1_).float().requires_grad_()
     theta2_ = torch.from_numpy(theta2_).float().requires_grad_()
 
-    return (score1, score2), theta1_, theta2_
+    return theta1_, theta2_
 
 
-def play(agent1, agent2, n_lookaheads):
-    joint_scores = []
+def play(agent1, agent2, n_lookaheads, trials, info, mooc, game):
+    state_distribution_log = np.zeros((env.action_space[0].n, env.action_space[1].n))
     print("start iterations with", n_lookaheads, "lookaheads:")
+
     # init opponent models
-    theta1_ = torch.zeros(5, requires_grad=True)
-    theta2_ = torch.zeros(5, requires_grad=True)
+    theta1_ = torch.zeros(env.NUM_ACTIONS, requires_grad=True)
+    theta2_ = torch.zeros(env.NUM_ACTIONS, requires_grad=True)
     for update in range(hp.n_update):
         # agents use own values to model others:
         values1_ = torch.tensor(agent2.values.detach(), requires_grad=True)
@@ -72,16 +68,49 @@ def play(agent1, agent2, n_lookaheads):
         agent2.out_lookahead(theta1_, values1_)
 
         # evaluate progress:
-        score, theta1_, theta2_ = step(agent1.theta, agent2.theta, agent1.values, agent2.values)
-        joint_scores.append(0.5*(score[0] + score[1]))
+        r1, r2, a1, a2 = step(agent1, agent2)
+        if update >= (0.9 * hp.n_update):
+            for idx in range(len(a1)):
+                state_distribution_log[a1[idx], a2[idx]] += 1
 
-        # print
-        if update%10==0 :
-            p1 = [p.item() for p in torch.sigmoid(agent1.theta)]
-            p2 = [p.item() for p in torch.sigmoid(agent2.theta)]
-            print('update', update, 'score (%.3f,%.3f)' % (score[0], score[1]) , 'policy (agent1) = {%.3f, %.3f, %.3f, %.3f, %.3f}' % (p1[0], p1[1], p1[2], p1[3], p1[4]),' (agent2) = {%.3f, %.3f, %.3f, %.3f, %.3f}' % (p2[0], p2[1], p2[2], p2[3], p2[4]))
+        act_probs1 = get_act_probs(a1)
+        act_probs2 = get_act_probs(a2)
+        act_hist_log[0].append([update, trial, n_lookaheads, act_probs1[0], act_probs1[1], act_probs1[2]])
+        act_hist_log[1].append([update, trial, n_lookaheads, act_probs2[0], act_probs2[1], act_probs2[2]])
 
-    return joint_scores
+        payoff_episode_log1.append([update, trial, n_lookaheads, np.mean(u1(r1))])
+        payoff_episode_log2.append([update, trial, n_lookaheads, np.mean(u2(r2))])
+
+    columns = ['Episode', 'Trial', 'Lookahead', 'Payoff']
+    df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
+    df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
+
+    path_data = f'results/{game}/{mooc}'
+    mkdir_p(path_data)
+
+    df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
+    df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
+
+    state_distribution_log /= hp.batch_size * (0.1 * hp.n_update) * trials
+    print(np.sum(state_distribution_log))
+    df = pd.DataFrame(state_distribution_log)
+    df.to_csv(f'{path_data}/states_{info}_{n_lookaheads}.csv', index=False, header=None)
+
+    columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2', 'Action 3']
+    df1 = pd.DataFrame(act_hist_log[0], columns=columns)
+    df2 = pd.DataFrame(act_hist_log[1], columns=columns)
+
+    df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
+    df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
+
+
+def get_act_probs(actions):
+    count = Counter(actions)
+    total = sum(count.values())
+    act_probs = np.ones(env.NUM_ACTIONS)
+    for action in range(env.action_space[0].n):
+        act_probs[action] = count[action] / (total + env.NUM_ACTIONS)
+    return act_probs
 
 # plot progress:
 if __name__=="__main__":
@@ -107,7 +136,7 @@ if __name__=="__main__":
 
     hp = HpLolaDice()
     payout_mat = get_payoff_matrix(game)
-    iga = IGA(hp.len_rollout, hp.batch_size, payout_mat)
+    env = IGA(hp.len_rollout, hp.batch_size, payout_mat)
 
     for el in info:
         for i in range(n_lookaheads):
@@ -115,6 +144,6 @@ if __name__=="__main__":
             np.random.seed(seed)
 
             if el == '0M':
-                play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)
+                play(AgentDiceBase(env, hp, u1, u2, mooc), AgentDiceBase(env, hp, u2, u1, mooc), i, trials, el, mooc, game)
             else:
-                play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)
+                play(AgentDice1M(env, hp, u1, u2, mooc), AgentDice1M(env, hp, u2, u1, mooc), i, trials, el, mooc, game)

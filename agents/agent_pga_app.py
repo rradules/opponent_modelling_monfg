@@ -4,7 +4,7 @@ import numpy as np
 
 
 class AgentPGAAPPBase:
-    def __init__(self, env, hp, utility, other_utility, mooc, init_pi=None):
+    def __init__(self, env, hp, utility, other_utility, mooc):
         # own utility function
         self.utility = utility
         # opponent utility function
@@ -14,11 +14,8 @@ class AgentPGAAPPBase:
         self.hp = hp
         # the MO optimisation criterion (SER/ESR)
         self.mooc = mooc
-        if init_pi:
-            self.pi = torch.FloatTensor(init_pi)
-        else:
-            self.pi = torch.rand(env.NUM_ACTIONS)
-            self.pi /= torch.sum(self.pi)
+        self.pi = torch.rand(env.NUM_ACTIONS)
+        self.pi /= torch.sum(self.pi)
 
         # init values and its optimizer
         if mooc == 'SER':

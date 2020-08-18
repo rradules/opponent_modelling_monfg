@@ -37,6 +37,7 @@ def play(agent1, agent2, n_lookaheads, trials, info, mooc, game):
 
     state_distribution_log = np.zeros((iga.action_space[0].n, iga.action_space[1].n))
     print("start iterations with", n_lookaheads, "lookaheads:")
+
     for trial in range(trials):
         for update in range(hp.n_update):
             # copy other's parameters:
@@ -68,14 +69,14 @@ def play(agent1, agent2, n_lookaheads, trials, info, mooc, game):
             act_hist_log[0].append([update, trial, n_lookaheads, act_probs1[0], act_probs1[1], act_probs1[2]])
             act_hist_log[1].append([update, trial, n_lookaheads, act_probs2[0], act_probs2[1], act_probs2[2]])
 
-            payoff_episode_log1.append([update, trial, n_lookaheads, np.mean(u1(r1))])
-            payoff_episode_log2.append([update, trial, n_lookaheads, np.mean(u2(r2))])
+            payoff_episode_log1.append([update, trial, n_lookaheads, u1(torch.mean(torch.Tensor(r1), dim=1)).item()])
+            payoff_episode_log2.append([update, trial, n_lookaheads, u2(torch.mean(torch.Tensor(r2), dim=1)).item()])
 
     columns = ['Episode', 'Trial', 'Lookahead', 'Payoff']
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/{game}/{mooc}'
+    path_data = f'results/{game}/{mooc}/{hp.use_baseline}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -110,14 +111,15 @@ if __name__ == "__main__":
     parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
+    parser.add_argument('-baseline', type=bool, default=False, help="Variance reduction")
     parser.add_argument('-game', type=str, default='iga', help="game")
+    parser.add_argument('-mem', type=str, default='0M', help="memory")
 
     args = parser.parse_args()
 
-    u1 = lambda x: x[0] ** 2 + x[1] ** 2
-    u2 = lambda x: x[0] * x[1]
+    u1 = lambda x: torch.sum(torch.pow(x, 2), dim=0)
+    u2 = lambda x: torch.prod(x, dim=0)
 
-    info = ["0M", "1M"]
     n_lookaheads = args.lookahead
     mooc = args.mooc
     seed = args.seed
@@ -125,15 +127,17 @@ if __name__ == "__main__":
     game = args.game
 
     hp = HpLolaDice()
+    hp.use_baseline = args.baseline
     payout_mat = get_payoff_matrix(game)
     iga = IGA(hp.len_rollout, hp.batch_size, payout_mat)
 
-    for el in info:
-        for i in range(n_lookaheads):
-            torch.manual_seed(seed)
-            np.random.seed(seed)
+    info = args.mem
 
-            if el == '0M':
-                play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)
-            else:
-                play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, el, mooc, game)
+    for i in range(n_lookaheads):
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
+        if info == '0M':
+            play(AgentDiceBase(iga, hp, u1, u2, mooc), AgentDiceBase(iga, hp, u2, u1, mooc), i, trials, info, mooc, game)
+        else:
+            play(AgentDice1M(iga, hp, u1, u2, mooc), AgentDice1M(iga, hp, u2, u1, mooc), i, trials, info, mooc, game)

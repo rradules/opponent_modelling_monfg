@@ -75,13 +75,15 @@ class AgentDiceBase:
             a1, lp1, v1 = self.act(s1, self.theta, self.values)
             a2, lp2, v2 = self.act(s2, theta, values)
             (s1, s2), (r1, r2), _, _ = self.env.step((a1, a2))
+            r1 = torch.Tensor(r1)
+            r2 = torch.Tensor(r2)
             if self.mooc == 'ESR':
                 r1 = self.utility(r1)
                 r2 = self.utility(r2)
             if inner:
-                memory.add(lp2, lp1, v2, torch.from_numpy(r2).float())
+                memory.add(lp2, lp1, v2, r2)
             else:
-                memory.add(lp1, lp2, v1, torch.from_numpy(r1).float())
+                memory.add(lp1, lp2, v1, r1)
 
         return memory
 
@@ -89,27 +91,34 @@ class AgentDiceBase:
         self_logprobs = torch.stack(logprobs, dim=1)
         other_logprobs = torch.stack(other_logprobs, dim=1)
         values = torch.stack(values, dim=2).permute(1, 0, 2)
-        if self.mooc == 'SER':
-            rewards = torch.stack(rewards, dim=2)
-            cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards[0].size()), dim=1) / self.hp.gamma
-            discounted_rewards, discounted_values = self._apply_discount_SER(cum_discount, rewards, values, utility)
-        else:
-            rewards = torch.stack(rewards, dim=-1)
-            cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards.size()), dim=1) / self.hp.gamma
-            discounted_rewards, discounted_values = self._apply_discount_ESR(cum_discount, rewards, values)
 
         # stochastic nodes involved in rewards dependencies:
         dependencies = torch.cumsum(self_logprobs + other_logprobs, dim=1)
 
+        if self.mooc == 'SER':
+            rewards = torch.stack(rewards, dim=2)
+            cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards[0].size()), dim=1) / self.hp.gamma
+            discounted_rewards, discounted_values = self._apply_discount(cum_discount, rewards, values)
+
+            # dice objective:
+            dice_objective = utility(torch.mean(torch.sum(magic_box(dependencies) * discounted_rewards, dim=2), dim=1))
+        else:
+            rewards = torch.stack(rewards, dim=-1)
+            cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards.size()), dim=1) / self.hp.gamma
+            discounted_rewards, discounted_values = self._apply_discount(cum_discount, rewards, values)
+            # dice objective:
+            dice_objective = torch.mean(torch.sum(magic_box(dependencies) * discounted_rewards, dim=1))
+
         # logprob of each stochastic nodes:
         stochastic_nodes = self_logprobs + other_logprobs
 
-        # dice objective:
-        dice_objective = torch.mean(torch.sum(magic_box(dependencies) * discounted_rewards, dim=1))
-
         if self.hp.use_baseline:
-            # variance_reduction:
-            baseline_term = torch.mean(torch.sum((1 - magic_box(stochastic_nodes)) * discounted_values, dim=1))
+            if self.mooc == 'SER':
+                # variance_reduction:
+                baseline_term = utility(
+                    torch.mean(torch.sum((1 - magic_box(stochastic_nodes)) * discounted_values, dim=2), dim=1))
+            else:
+                baseline_term = torch.mean(torch.sum((1 - magic_box(stochastic_nodes)) * discounted_values, dim=1))
             dice_objective = dice_objective + baseline_term
 
         return -dice_objective  # want to minimize -objective
@@ -123,23 +132,11 @@ class AgentDiceBase:
             rewards = torch.stack(rewards, dim=1).unsqueeze(2)
         return torch.mean((rewards - values) ** 2)
 
-    def _apply_discount_SER(self, cum_discount, rewards, values, utility):
-        discounted_rewards_o1 = rewards[0] * cum_discount
-        discounted_rewards_o2 = rewards[1] * cum_discount
-        discounted_values_1 = values[0] * cum_discount
-        discounted_values_o2 = values[1] * cum_discount
-
-        discounted_rewards = utility([discounted_rewards_o1, discounted_rewards_o2])
-        discounted_values = utility([discounted_values_1, discounted_values_o2])
-
-        return discounted_rewards, discounted_values
-
-    def _apply_discount_ESR(self, cum_discount, rewards, values):
+    def _apply_discount(self, cum_discount, rewards, values):
         discounted_rewards = rewards * cum_discount
         discounted_values = values * cum_discount
 
         return discounted_rewards, discounted_values
-
 
 class AgentDice1M(AgentDiceBase):
     def __init__(self, env, hp, utility, other_utility, mooc):
