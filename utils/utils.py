@@ -1,5 +1,6 @@
 import os
 import errno
+import numpy as np
 
 def mkdir_p(path):
     try:
@@ -9,3 +10,14 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+
+def softmax(z):
+    zz = z - np.max(z)
+    sm = (np.exp(zz).T / np.sum(np.exp(zz), axis=0)).T
+    return sm
+
+
+def softmax_grad(softmax):
+    s = softmax.reshape(-1, 1)
+    return np.diagflat(s) - np.dot(s, s.T)

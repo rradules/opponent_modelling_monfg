@@ -15,8 +15,9 @@ sns.set_style('white', {'axes.edgecolor': "0.5", "pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 
-def plot_results(game, mooc, el, path_data):
-    path_plots = f'plots/{game}/{mooc}'
+def plot_results(game, mooc, el, path_data, baseline, experiment):
+
+    path_plots = f'plots/lola_{experiment}_{game}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{el}.csv')
@@ -27,7 +28,7 @@ def plot_results(game, mooc, el, path_data):
 
     ax.set(ylabel='Scalarised payoff per step')
     ax.set(xlabel='Iterations')
-    ax.set_ylim(0, 14)
+    #ax.set_ylim(0, 14)
     ax.set_xlim(0, episodes)
     plot_name = f"{path_plots}/payoffs_ag1_{el}"
     plt.title("Agent 1")
@@ -99,16 +100,17 @@ def plot_results(game, mooc, el, path_data):
 
 
 if __name__ == "__main__":
-    info = ["0M", "1M"]
+    info = ["1M"]#, "1M"]
     n_lookaheads = 5
-    trials = 10
+    baseline = True
+    experiment = '1m_ser'
 
-    episodes = 1000
-    moocs = ['SER', 'ESR']
-    games = ['iga', 'igaNE']
+    episodes = 500
+    moocs = ['SER'] #, 'ESR']
+    games = ['iagNE'] #['iag', 'iagNE']
 
     for mooc in moocs:
         for game in games:
-            path_data = f'results/{game}/{mooc}'
+            path_data = f'results/lola_{experiment}_{game}'
             for el in info:
-                plot_results(game, mooc, el, path_data)
+                plot_results(game, mooc, el, path_data, baseline, experiment)

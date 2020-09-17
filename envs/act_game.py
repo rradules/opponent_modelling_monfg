@@ -3,38 +3,30 @@
 """
 import gym
 import numpy as np
-from gym.spaces import Discrete, Tuple
-
-from .common import OneHot
 
 
-class ImbalancingActGame(gym.Env):
+class ActGame(gym.Env):
     """
     A two-agent vectorized multi-objective environment.
     Possible actions for each agent are (L)eft, (M)iddle and (R)ight.
     """
 
     NUM_AGENTS = 2
-    NUM_ACTIONS = 3
-    # s_0 + all action combinations
-    NUM_STATES = NUM_ACTIONS**2 + 1
+
+
     NUM_OBJECTIVES = 2
 
     def __init__(self, max_steps, batch_size, payout_mat):
         self.max_steps = max_steps
         self.batch_size = batch_size
-
+        self.NUM_ACTIONS = len(payout_mat[0])
+        # s_0 + all action combinations
+        self.NUM_STATES = self.NUM_ACTIONS ** 2 + 1
         self.payout_mat = payout_mat
 
         self.states = np.reshape(np.array(range(self.NUM_ACTIONS**2)) + 1,
                                  (self.NUM_ACTIONS, self.NUM_ACTIONS))
 
-        self.action_space = Tuple([
-            Discrete(self.NUM_ACTIONS) for _ in range(self.NUM_AGENTS)
-        ])
-        self.observation_space = Tuple([
-            OneHot(self.NUM_STATES) for _ in range(self.NUM_AGENTS)
-        ])
         self.available_actions = [
             np.ones((batch_size, self.NUM_ACTIONS), dtype=int)
             for _ in range(self.NUM_AGENTS)

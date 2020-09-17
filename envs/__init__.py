@@ -1,8 +1,8 @@
-from .imbal_game_act import ImbalancingActGame
-from .pga_games import PGA_Games
+from .act_game import ActGame
 from .prisoners_dilemma import IteratedPrisonersDilemma
+from .matching_pennies import IteratedMatchingPennies
 
 # Aliases
-IGA = ImbalancingActGame
-PGA = PGA_Games
+IAG = ActGame
 IPD = IteratedPrisonersDilemma
+IMP = IteratedMatchingPennies
