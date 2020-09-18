@@ -57,7 +57,9 @@ class PGDiceBase:
 
     def act_opp(self, batch_states, theta):
         batch_states = torch.from_numpy(batch_states).long()
-        m = Categorical(theta)
+        probs = torch.sigmoid(theta)
+
+        m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
         log_probs_actions = m.log_prob(actions)
         return actions.numpy().astype(int), log_probs_actions
@@ -66,8 +68,8 @@ class PGDiceBase:
         memory = Memory(self.hp)
         (s1, s2), _ = self.env.reset()
         for t in range(self.hp.len_rollout):
-            a1, lp1, v1 = self.act(s1, self.theta)
-            a2, lp2, v2 = self.act_opp(s2, theta)
+            a1, lp1 = self.act(s1, self.theta)
+            a2, lp2 = self.act_opp(s2, theta)
             if self.id > 0:
                 (s2, s1), (r2, r1), _, _ = self.env.step((a2, a1))
             else:

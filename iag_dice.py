@@ -31,9 +31,6 @@ def step(agent1, agent2):
     theta1 = agent1.theta
     theta2 = agent2.theta
 
-    values1 = agent1.values
-    values2 = agent2.values
-
     rewards1 = []
     rewards2 = []
     actions1 = []
@@ -42,14 +39,14 @@ def step(agent1, agent2):
     # just to evaluate progress:
     (s1, s2), _ = env.reset()
     for t in range(hp.len_rollout):
-        a1, _, _ = agent1.act(s1, theta1, values1)
-        a2, _, _ = agent2.act(s2, theta2, values2)
+        a1, _ = agent1.act(s1, theta1)
+        a2, _ = agent2.act(s2, theta2)
         (s1, s2), (r1, r2), _, _ = env.step((a1, a2))
         rewards1.append(r1)
         rewards2.append(r2)
         actions1.append(a1)
         actions2.append(a2)
-    return rewards1, rewards2, actions1, actions2
+    return np.array(rewards1), np.array(rewards2), np.array(actions1), np.array(actions2)
 
 
 def play(n_lookaheads, trials, info, mooc, game, experiment):
@@ -65,27 +62,48 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             agent1 = PGDice1M(0, env, hp, u1, u2, mooc)
             agent2 = PGDice1M(1, env, hp, u2, u1, mooc)
 
+        trace = []
+
         for update in range(hp.n_update):
             # copy other's parameters:
             theta1_ = agent1.theta.clone().detach().requires_grad_(True)
-            values1_ = agent1.values.clone().detach().requires_grad_(True)
             theta2_ = agent2.theta.clone().detach().requires_grad_(True)
-            values2_ = agent2.values.clone().detach().requires_grad_(True)
 
             for k in range(n_lookaheads):
                 # estimate other's gradients from in_lookahead:
-                grad2 = agent1.in_lookahead(theta2_, values2_)
-                grad1 = agent2.in_lookahead(theta1_, values1_)
+                grad2 = agent1.in_lookahead(theta2_)
+                grad1 = agent2.in_lookahead(theta1_)
                 # update other's theta
                 theta2_ = theta2_ - hp.lr_in * grad2
                 theta1_ = theta1_ - hp.lr_in * grad1
 
             # update own parameters from out_lookahead:
-            agent1.out_lookahead(theta2_, values2_)
-            agent2.out_lookahead(theta1_, values1_)
+            agent1.out_lookahead(theta2_)
+            agent2.out_lookahead(theta1_)
 
             # evaluate progress:
             r1, r2, a1, a2 = step(agent1, agent2)
+
+            df_a1 = pd.DataFrame(a1).stack().reset_index()
+            df_r1_o1 = pd.DataFrame(r1[:, 0, :]).stack().reset_index()
+            df_r1_o2 = pd.DataFrame(r1[:, 1, :]).stack().reset_index()
+            df_r2_o1 = pd.DataFrame(r2[:, 0, :]).stack().reset_index()
+            df_r2_o2 = pd.DataFrame(r2[:, 1, :]).stack().reset_index()
+            df_a2 = pd.DataFrame(a2).stack().reset_index()
+            #df_a1.rename(columns=['Rollout', 'Batch', 'Action 1'], inplace=True)
+            df_a1.columns = ['Rollout', 'Batch', 'A1']
+            df_a2.columns = ['Rollout', 'Batch', 'A2']
+            df_r1_o1.columns = ['Rollout', 'Batch', 'R1O1']
+            df_r1_o2.columns = ['Rollout', 'Batch', 'R1O2']
+            df_r2_o1.columns = ['Rollout', 'Batch', 'R2O1']
+            df_r2_o2.columns = ['Rollout', 'Batch', 'R2O2']
+
+            df_trace = pd.concat([df_a1, df_r1_o1[['R1O1']], df_r1_o2[['R1O2']],
+                            df_a2[['A2']], df_r2_o1[['R2O1']], df_r2_o2[['R2O2']]], axis=1, sort=False)
+
+            df_trace['Episode'] = update
+            df_trace = df_trace[['Episode', 'Rollout', 'Batch', 'A1', 'R1O1', 'R1O2', 'A2', 'R2O1', 'R2O2']]
+
             if update >= (0.1 * hp.n_update):
                 for rol_a in range(len(a1)):
                     for batch_a in range(len(a1[rol_a])):
@@ -110,7 +128,6 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             payoff_episode_log1.append([update, trial, n_lookaheads, score1])
             payoff_episode_log2.append([update, trial, n_lookaheads, score2])
 
-
     columns = ['Episode', 'Trial', 'Lookahead', 'Payoff']
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
@@ -121,10 +138,17 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
+    del df1, df2
+
+    df_trace.to_csv(f'{path_data}/traces_{info}.csv', index=False)
+    del df_trace
+
     state_distribution_log /= hp.batch_size * (0.9 * hp.n_update) * trials * hp.len_rollout
     print(np.sum(state_distribution_log))
     df = pd.DataFrame(state_distribution_log)
     df.to_csv(f'{path_data}/states_{info}_{n_lookaheads}.csv', index=False, header=None)
+
+    del df
 
     if env.NUM_ACTIONS == 3:
         columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2', 'Action 3']
@@ -135,6 +159,8 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
     df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
+
+    del df1, df2
 
 def get_act_probs(act_ep):
     act_probs = np.zeros(env.NUM_ACTIONS)
@@ -151,22 +177,22 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=5, help="number of trials")
-    parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
+    parser.add_argument('-trials', type=int, default=1, help="number of trials")
+    parser.add_argument('-lookahead', type=int, default=1, help="number of lookaheads")
     parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
     parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
     parser.add_argument('-lr_v', type=float, default=0.1, help="lr values")
     parser.add_argument('-gamma', type=float, default=0.96, help="gamma")
-    parser.add_argument('-updates', type=int, default=500, help="updates")
+    parser.add_argument('-updates', type=int, default=50, help="updates")
     parser.add_argument('-batch', type=int, default=64, help="batch size")
-    parser.add_argument('-rollout', type=int, default=100, help="rollout size")
+    parser.add_argument('-rollout', type=int, default=150, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-baseline', action='store_true', help="Variance reduction")
     parser.add_argument('-no-baseline', action='store_false', help="Variance reduction")
-    parser.add_argument('-game', type=str, default='iagM', help="game")
-    parser.add_argument('-mem', type=str, default='1M', help="memory")
-    parser.add_argument('-experiment', type=str, default='test', help="experiment")
+    parser.add_argument('-game', type=str, default='iag', help="game")
+    parser.add_argument('-mem', type=str, default='0M', help="memory")
+    parser.add_argument('-experiment', type=str, default='trace-test', help="experiment")
 
     args = parser.parse_args()
 
