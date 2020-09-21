@@ -51,6 +51,9 @@ def step(agent1, agent2):
 
 def play(n_lookaheads, trials, info, mooc, game, experiment):
 
+    path_data = f'results/lola_{experiment}_{game}' #/{mooc}/{hp.use_baseline}'
+    mkdir_p(path_data)
+
     state_distribution_log = np.zeros((env.NUM_ACTIONS, env.NUM_ACTIONS))
     print("start iterations with", n_lookaheads, "lookaheads:")
 
@@ -104,6 +107,12 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             df_trace['Episode'] = update
             df_trace = df_trace[['Episode', 'Rollout', 'Batch', 'A1', 'R1O1', 'R1O2', 'A2', 'R2O1', 'R2O2']]
 
+            header = True
+            if update > 0:
+                header = False
+            df_trace.to_csv(f'{path_data}/traces_{info}.csv', index=False, mode='a', header=header)
+            del df_trace
+
             if update >= (0.1 * hp.n_update):
                 for rol_a in range(len(a1)):
                     for batch_a in range(len(a1[rol_a])):
@@ -132,16 +141,11 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/lola_{experiment}_{game}' #/{mooc}/{hp.use_baseline}'
-    mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
     del df1, df2
-
-    df_trace.to_csv(f'{path_data}/traces_{info}.csv', index=False)
-    del df_trace
 
     state_distribution_log /= hp.batch_size * (0.9 * hp.n_update) * trials * hp.len_rollout
     print(np.sum(state_distribution_log))
