@@ -32,7 +32,7 @@ class PGDiceBase:
 
     def in_lookahead(self, op_theta):
         op_memory = self.perform_rollout(op_theta, inner=True)
-        op_logprobs, logprobs, op_values, op_rewards = op_memory.get_content()
+        op_logprobs, logprobs, op_rewards = op_memory.get_content()
 
         op_objective = self.dice_objective(self.other_utility, op_logprobs, logprobs, op_rewards)
         grad = torch.autograd.grad(op_objective, op_theta, create_graph=True)[0]
@@ -47,7 +47,7 @@ class PGDiceBase:
         self.theta_update(objective)
 
     def act(self, batch_states, theta):
-        batch_states = torch.from_numpy(batch_states).long()
+        batch_states = torch.tensor(batch_states)
         probs = torch.sigmoid(theta)
 
         m = Categorical(probs)
@@ -56,10 +56,12 @@ class PGDiceBase:
         return actions.numpy().astype(int), log_probs_actions
 
     def act_opp(self, batch_states, theta):
-        batch_states = torch.from_numpy(batch_states).long()
-        probs = torch.sigmoid(theta)
-
-        m = Categorical(probs)
+        batch_states = torch.tensor(batch_states)
+        if torch.sum(theta).item() == 1:
+            m = Categorical(theta)
+        else:
+            probs = torch.sigmoid(theta)
+            m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
         log_probs_actions = m.log_prob(actions)
         return actions.numpy().astype(int), log_probs_actions
@@ -124,7 +126,7 @@ class PGDice1M(PGDiceBase):
         self.theta_optimizer = torch.optim.Adam((self.theta,), lr=hp.lr_out)
 
     def act(self, batch_states, theta):
-        batch_states = torch.from_numpy(batch_states).long()
+        batch_states = torch.tensor(batch_states)
         probs = torch.sigmoid(theta)[batch_states]
         m = Categorical(probs)
         actions = m.sample()

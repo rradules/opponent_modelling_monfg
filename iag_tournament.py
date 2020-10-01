@@ -95,25 +95,27 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
             # if LOLA-LOLA
             # copy other's parameters:
-            if experiment == ['LOLA, LOLA']:
+            if experiment == ['LOLA', 'LOLA']:
                 theta1_ = agent1.theta.clone().detach().requires_grad_(True)
                 theta2_ = agent2.theta.clone().detach().requires_grad_(True)
                 LOLA_loop(agent1, theta2_, agent2, theta1_)
 
-            '''
+
             # if LOLAom-LOLAom
-            theta1_ = torch.from_numpy(act_probs1).float().requires_grad_(True)
-            theta2_ = torch.from_numpy(act_probs2).float().requires_grad_(True)
-            LOLA_loop(agent1, theta2_, agent2, theta1_)
+            if experiment == ['LOLAom', 'LOLAom']:
+                LOLA_loop(agent1, torch.tensor(act_probs2, requires_grad=True),
+                          agent2, torch.tensor(act_probs1, requires_grad=True))
 
-            #if AC-AC
-            agent1.update(a1, r1)
-            agent2.update(a2, r2)
+            if experiment == ['AC', 'AC']:
+                agent1.update(a1, r1)
+                agent2.update(a2, r2)
 
-            #if ACom-ACom
-            agent1.update(a1, r1, act_probs2, a2)
-            agent2.update(a2, r2, act_probs1, a1)
-            '''
+            if experiment == ['ACom', 'ACom']:
+                agent1.update(a1, r1, act_probs2, a2)
+                agent2.update(a2, r2, act_probs1, a1)
+
+            # TODO: Mixed version tournament
+
             if update >= (0.1 * hpL.n_update):
                 for rol_a in range(len(a1)):
                     for batch_a in range(len(a1[rol_a])):
@@ -179,13 +181,13 @@ if __name__ == "__main__":
 
     parser.add_argument('-trials', type=int, default=5, help="number of trials")
     parser.add_argument('-updates', type=int, default=500, help="updates")
-    parser.add_argument('-batch', type=int, default=64, help="batch size")
-    parser.add_argument('-rollout', type=int, default=100, help="rollout size")
+    parser.add_argument('-batch', type=int, default=32, help="batch size")
+    parser.add_argument('-rollout', type=int, default=50, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     # LOLA Agent
-    parser.add_argument('-lookahead', type=int, default=5, help="number of lookaheads")
+    parser.add_argument('-lookahead', type=int, default=3, help="number of lookaheads")
     parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
     parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
     parser.add_argument('-lr_v', type=float, default=0.1, help="lr values")
@@ -199,8 +201,8 @@ if __name__ == "__main__":
     parser.add_argument('-lr_theta', type=float, default=0.1, help="lr theta")
     parser.add_argument('-gammaAC', type=float, default=0.9, help="gamma")
 
-    parser.add_argument('-game', type=str, default='iagM', help="game")
-    parser.add_argument('-experiment', type=str, default='LOLA-LOLA', help="experiment")
+    parser.add_argument('-game', type=str, default='iag', help="game")
+    parser.add_argument('-experiment', type=str, default='LOLAom-LOLAom', help="experiment")
 
     args = parser.parse_args()
 
