@@ -87,6 +87,9 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             # evaluate progress:
             r1, r2, a1, a2 = step(agent1, agent2)
 
+            act_probs1 = get_act_probs(a1)
+            act_probs2 = get_act_probs(a2)
+
             df_a1 = pd.DataFrame(a1).stack().reset_index()
             df_r1_o1 = pd.DataFrame(r1[:, 0, :]).stack().reset_index()
             df_r1_o2 = pd.DataFrame(r1[:, 1, :]).stack().reset_index()
@@ -121,8 +124,6 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             score1 = get_return(r1, u1, mooc)
             score2 = get_return(r2, u2, mooc)
 
-            act_probs1 = get_act_probs(a1)
-            act_probs2 = get_act_probs(a2)
             if env.NUM_ACTIONS == 2:
                 act_hist_log[0].append([update, trial, n_lookaheads,
                                         act_probs1[0], act_probs1[1]])

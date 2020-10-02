@@ -16,6 +16,7 @@ from envs.monfgs import get_payoff_matrix
 payoff_episode_log1 = []
 payoff_episode_log2 = []
 act_hist_log = [[], []]
+trace_log = [[], []]
 
 
 def get_return(rewards, utility, mooc):
@@ -25,7 +26,7 @@ def get_return(rewards, utility, mooc):
     else:
         rewards = utility(torch.mean(torch.Tensor(rewards).permute(1, 2, 0), dim=2))
         ret = torch.mean(rewards).item()
-    return ret
+    return rewards.detach().cpu().numpy(), ret
 
 
 def step(agent1, agent2):
@@ -100,7 +101,6 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 theta2_ = agent2.theta.clone().detach().requires_grad_(True)
                 LOLA_loop(agent1, theta2_, agent2, theta1_)
 
-
             # if LOLAom-LOLAom
             if experiment == ['LOLAom', 'LOLAom']:
                 LOLA_loop(agent1, torch.tensor(act_probs2, requires_grad=True),
@@ -121,18 +121,26 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                     for batch_a in range(len(a1[rol_a])):
                         state_distribution_log[a1[rol_a][batch_a], a2[rol_a][batch_a]] += 1
 
-            score1 = get_return(r1, u1, mooc)
-            score2 = get_return(r2, u2, mooc)
+            ret1, score1 = get_return(r1, u1, mooc)
+            ret2, score2 = get_return(r2, u2, mooc)
 
             if env.NUM_ACTIONS == 2:
                 act_hist_log[0].append([update, trial, n_lookaheads,
                                         act_probs1[0], act_probs1[1]])
                 act_hist_log[1].append([update, trial, n_lookaheads,
                                         act_probs2[0], act_probs2[1]])
+                trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
+                                        act_probs1[0], act_probs1[1]])
+                trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
+                                        act_probs2[0], act_probs2[1]])
             else:
                 act_hist_log[0].append([update, trial, n_lookaheads,
                                         act_probs1[0], act_probs1[1], act_probs1[2]])
                 act_hist_log[1].append([update, trial, n_lookaheads,
+                                        act_probs2[0], act_probs2[1], act_probs2[2]])
+                trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
+                                        act_probs1[0], act_probs1[1], act_probs1[2]])
+                trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
                                         act_probs2[0], act_probs2[1], act_probs2[2]])
 
             payoff_episode_log1.append([update, trial, n_lookaheads, score1])
@@ -142,7 +150,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/lola_{experiment}_{game}'  # /{mooc}/{hp.use_baseline}'
+    path_data = f'results/tour_{experiment}_{game}'  # /{mooc}/{hp.use_baseline}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -155,13 +163,22 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
     if env.NUM_ACTIONS == 3:
         columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2', 'Action 3']
+        columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2', 'Action 3']
     else:
         columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2']
+        columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2']
     df1 = pd.DataFrame(act_hist_log[0], columns=columns)
     df2 = pd.DataFrame(act_hist_log[1], columns=columns)
 
     df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
+
+    df1 = pd.DataFrame(trace_log[0], columns=columns1)
+    df2 = pd.DataFrame(trace_log[1], columns=columns1)
+
+    df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
+    df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
+    del df1, df2
 
 
 def get_act_probs(act_ep):
@@ -179,10 +196,10 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=5, help="number of trials")
+    parser.add_argument('-trials', type=int, default=1, help="number of trials")
     parser.add_argument('-updates', type=int, default=500, help="updates")
-    parser.add_argument('-batch', type=int, default=32, help="batch size")
-    parser.add_argument('-rollout', type=int, default=50, help="rollout size")
+    parser.add_argument('-batch', type=int, default=64, help="batch size")
+    parser.add_argument('-rollout', type=int, default=100, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
@@ -202,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=0.9, help="gamma")
 
     parser.add_argument('-game', type=str, default='iag', help="game")
-    parser.add_argument('-experiment', type=str, default='LOLAom-LOLAom', help="experiment")
+    parser.add_argument('-experiment', type=str, default='LOLA-LOLA', help="experiment")
 
     args = parser.parse_args()
 
