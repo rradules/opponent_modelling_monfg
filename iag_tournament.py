@@ -114,7 +114,15 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 agent1.update(a1, r1, act_probs2, a2)
                 agent2.update(a2, r2, act_probs1, a1)
 
-            # TODO: Mixed version tournament
+            if experiment == ['AC', 'ACom']:
+                agent1.update(a1, r1)
+                agent2.update(a2, r2, act_probs1, a1)
+
+            if experiment == ['ACom', 'AC']:
+                agent1.update(a1, r1, act_probs2, a2)
+                agent2.update(a2, r2)
+
+            # TODO: Mixed version tournament for LOLA
 
             if update >= (0.1 * hpL.n_update):
                 for rol_a in range(len(a1)):
@@ -129,19 +137,23 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                                         act_probs1[0], act_probs1[1]])
                 act_hist_log[1].append([update, trial, n_lookaheads,
                                         act_probs2[0], act_probs2[1]])
+                '''
                 trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
                                         act_probs1[0], act_probs1[1]])
                 trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
                                         act_probs2[0], act_probs2[1]])
+                '''
             else:
                 act_hist_log[0].append([update, trial, n_lookaheads,
                                         act_probs1[0], act_probs1[1], act_probs1[2]])
                 act_hist_log[1].append([update, trial, n_lookaheads,
                                         act_probs2[0], act_probs2[1], act_probs2[2]])
+                '''
                 trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
                                         act_probs1[0], act_probs1[1], act_probs1[2]])
                 trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
                                         act_probs2[0], act_probs2[1], act_probs2[2]])
+                '''
 
             payoff_episode_log1.append([update, trial, n_lookaheads, score1])
             payoff_episode_log2.append([update, trial, n_lookaheads, score2])
@@ -173,12 +185,14 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
 
+    '''
     df1 = pd.DataFrame(trace_log[0], columns=columns1)
     df2 = pd.DataFrame(trace_log[1], columns=columns1)
 
     df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
     del df1, df2
+    '''
 
 
 def get_act_probs(act_ep):
@@ -196,8 +210,8 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=1, help="number of trials")
-    parser.add_argument('-updates', type=int, default=500, help="updates")
+    parser.add_argument('-trials', type=int, default=10, help="number of trials")
+    parser.add_argument('-updates', type=int, default=2000, help="updates")
     parser.add_argument('-batch', type=int, default=64, help="batch size")
     parser.add_argument('-rollout', type=int, default=100, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
@@ -205,20 +219,21 @@ if __name__ == "__main__":
 
     # LOLA Agent
     parser.add_argument('-lookahead', type=int, default=3, help="number of lookaheads")
-    parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
-    parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
+    parser.add_argument('-lr_out', type=float, default=0.1, help="lr outer loop")
+    parser.add_argument('-lr_in', type=float, default=0.2, help="lr inner loop")
     parser.add_argument('-lr_v', type=float, default=0.1, help="lr values")
-    parser.add_argument('-gammaL', type=float, default=0.96, help="gamma")
+    parser.add_argument('-gammaL', type=float, default=1, help="gamma")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
-    parser.add_argument('-baseline', action='store_true', help="Variance reduction")
-    parser.add_argument('-no-baseline', action='store_false', help="Variance reduction")
+
+    #parser.add_argument('-baseline', action='store_true', help="Variance reduction")
+    #parser.add_argument('-no-baseline', action='store_false', help="Variance reduction")
 
     # AC agent
     parser.add_argument('-lr_q', type=float, default=0.1, help="lr q")
     parser.add_argument('-lr_theta', type=float, default=0.1, help="lr theta")
-    parser.add_argument('-gammaAC', type=float, default=0.9, help="gamma")
+    parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
-    parser.add_argument('-game', type=str, default='iag', help="game")
+    parser.add_argument('-game', type=str, default='iagNE', help="game")
     parser.add_argument('-experiment', type=str, default='LOLA-LOLA', help="experiment")
 
     args = parser.parse_args()
@@ -235,7 +250,7 @@ if __name__ == "__main__":
     game = args.game
 
     hpL = HpLolaDice(args.lr_out, args.lr_in, args.lr_v, args.gammaL,
-                     args.updates, args.rollout, args.batch, args.baseline)
+                     args.updates, args.rollout, args.batch)
     hpAC = HpAC(args.lr_q, args.lr_theta, args.gammaAC,
                 args.updates, args.rollout, args.batch)
 
