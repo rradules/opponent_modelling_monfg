@@ -103,12 +103,32 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
             # if LOLAom-LOLAom
             if experiment == ['LOLAom', 'LOLAom']:
-                LOLA_loop(agent1, torch.tensor(act_probs2, requires_grad=True),
-                          agent2, torch.tensor(act_probs1, requires_grad=True))
+                LOLA_loop(agent1, torch.tensor(np.log(act_probs2), requires_grad=True),
+                          agent2, torch.tensor(np.log(act_probs1), requires_grad=True))
+
+            if experiment == ['LOLAom', 'LOLA']:
+                theta1_ = agent1.theta.clone().detach().requires_grad_(True)
+                LOLA_loop(agent1, torch.tensor(-np.log(act_probs2), requires_grad=True),
+                          agent2, theta1_)
+
+            # if LOLAom-LOLAom
+            if experiment == ['LOLA', 'LOLAom']:
+                theta2_ = agent1.theta.clone().detach().requires_grad_(True)
+                LOLA_loop(agent1, theta2_,
+                          agent2, torch.tensor(-np.log(act_probs1), requires_grad=True))
 
             if experiment == ['AC', 'AC']:
                 agent1.update(a1, r1)
                 agent2.update(a2, r2)
+
+            if experiment == ['ACom', 'LOLAom']:
+                agent1.update(a1, r1, act_probs2, a2)
+                LOLA_loop(agent2, torch.tensor(-np.log(act_probs1), requires_grad=True))
+
+            if experiment == ['LOLAom', 'ACom']:
+                LOLA_loop(agent1, torch.tensor(-np.log(act_probs2), requires_grad=True))
+                agent2.update(a2, r2, act_probs1, a1)
+
 
             if experiment == ['ACom', 'ACom']:
                 agent1.update(a1, r1, act_probs2, a2)
@@ -137,23 +157,23 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                                         act_probs1[0], act_probs1[1]])
                 act_hist_log[1].append([update, trial, n_lookaheads,
                                         act_probs2[0], act_probs2[1]])
-                '''
+
                 trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
                                         act_probs1[0], act_probs1[1]])
                 trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
                                         act_probs2[0], act_probs2[1]])
-                '''
+
             else:
                 act_hist_log[0].append([update, trial, n_lookaheads,
                                         act_probs1[0], act_probs1[1], act_probs1[2]])
                 act_hist_log[1].append([update, trial, n_lookaheads,
                                         act_probs2[0], act_probs2[1], act_probs2[2]])
-                '''
+
                 trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
                                         act_probs1[0], act_probs1[1], act_probs1[2]])
                 trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
                                         act_probs2[0], act_probs2[1], act_probs2[2]])
-                '''
+
 
             payoff_episode_log1.append([update, trial, n_lookaheads, score1])
             payoff_episode_log2.append([update, trial, n_lookaheads, score2])
@@ -162,7 +182,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/tour_{experiment}_{game}'  # /{mooc}/{hp.use_baseline}'
+    path_data = f'results/tour_{experiment}_{game}_l{n_lookaheads}'  # /{mooc}/{hp.use_baseline}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -185,18 +205,18 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
 
-    '''
+
     df1 = pd.DataFrame(trace_log[0], columns=columns1)
     df2 = pd.DataFrame(trace_log[1], columns=columns1)
 
     df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
     del df1, df2
-    '''
+
 
 
 def get_act_probs(act_ep):
-    act_probs = np.zeros(env.NUM_ACTIONS)
+    act_probs = 1e-8 * np.ones(env.NUM_ACTIONS)
     for actions in act_ep:
         count = Counter(actions)
         total = sum(count.values())
@@ -210,17 +230,17 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=10, help="number of trials")
-    parser.add_argument('-updates', type=int, default=2000, help="updates")
+    parser.add_argument('-trials', type=int, default=30, help="number of trials")
+    parser.add_argument('-updates', type=int, default=3000, help="updates")
     parser.add_argument('-batch', type=int, default=64, help="batch size")
-    parser.add_argument('-rollout', type=int, default=100, help="rollout size")
+    parser.add_argument('-rollout', type=int, default=1, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     # LOLA Agent
-    parser.add_argument('-lookahead', type=int, default=3, help="number of lookaheads")
-    parser.add_argument('-lr_out', type=float, default=0.1, help="lr outer loop")
-    parser.add_argument('-lr_in', type=float, default=0.2, help="lr inner loop")
+    parser.add_argument('-lookahead', type=int, default=1, help="number of lookaheads")
+    parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
+    parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
     parser.add_argument('-lr_v', type=float, default=0.1, help="lr values")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
@@ -229,12 +249,12 @@ if __name__ == "__main__":
     #parser.add_argument('-no-baseline', action='store_false', help="Variance reduction")
 
     # AC agent
-    parser.add_argument('-lr_q', type=float, default=0.1, help="lr q")
-    parser.add_argument('-lr_theta', type=float, default=0.1, help="lr theta")
+    parser.add_argument('-lr_q', type=float, default=0.05, help="lr q")
+    parser.add_argument('-lr_theta', type=float, default=0.05, help="lr theta")
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='LOLA-LOLA', help="experiment")
+    parser.add_argument('-experiment', type=str, default='LOLAom-ACom', help="experiment")
 
     args = parser.parse_args()
 

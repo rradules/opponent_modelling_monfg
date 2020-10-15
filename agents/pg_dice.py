@@ -49,6 +49,7 @@ class PGDiceBase:
     def act(self, batch_states, theta):
         batch_states = torch.tensor(batch_states)
         probs = torch.sigmoid(theta)
+        #print(f'Agent {self.id}: {theta}')
 
         m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
@@ -79,6 +80,7 @@ class PGDiceBase:
 
             r1 = torch.Tensor(r1)
             r2 = torch.Tensor(r2)
+
             if inner:
                 memory.add(lp2, lp1, r2)
             else:
@@ -94,16 +96,16 @@ class PGDiceBase:
 
         rewards = torch.stack(rewards, dim=2)
         discounted_rewards = self._apply_discount(rewards)
+
+        #print(f'Agent {self.id}: {discounted_rewards}')
+
         # dice objective:
         if self.mooc == 'SER':
             dice_objective = utility(torch.mean(torch.sum(magic_box(dependencies) * discounted_rewards, dim=2), dim=1))
         else:
             dice_objective = torch.mean(utility(torch.sum(magic_box(dependencies) * discounted_rewards, dim=2)))
-
-        # logprob of each stochastic nodes:
-        stochastic_nodes = self_logprobs + other_logprobs
-
-        return -dice_objective  # want to minimize -objective
+        #print(f'Agent {self.id}: {dice_objective}')
+        return -dice_objective
 
     def _apply_discount(self, rewards):
         cum_discount = torch.cumprod(self.hp.gamma * torch.ones(*rewards[0].size()), dim=1) / self.hp.gamma

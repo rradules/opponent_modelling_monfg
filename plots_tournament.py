@@ -17,7 +17,7 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 def plot_results(game, mooc, path_data, experiment):
 
-    path_plots = f'plots/tour_{experiment}_{game}'
+    path_plots = f'plots/tour_{experiment}_{game}_l{lookahead}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{info}.csv')
@@ -38,8 +38,12 @@ def plot_results(game, mooc, path_data, experiment):
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
-    x_axis_labels = ["L", "M", "R"]
-    y_axis_labels = ["L", "M", "R"]
+    if game in ['iagRNE', 'iagR']:
+        x_axis_labels = ["L", "M"]
+        y_axis_labels = ["L", "M"]
+    else:
+        x_axis_labels = ["L", "M", "R"]
+        y_axis_labels = ["L", "M", "R"]
 
     df = pd.read_csv(f'{path_data}/states_{info}_{lookahead}.csv', header=None)
     ax = sns.heatmap(df, annot=True, cmap="YlGnBu", vmin=0, vmax=1, xticklabels=x_axis_labels,
@@ -54,8 +58,9 @@ def plot_results(game, mooc, path_data, experiment):
                       label='L')
     ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1,
                       ci='sd', label='M')
-    ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1,
-                      ci='sd', label='R')
+    if game not in ['iagRNE', 'iagR', 'iagM']:
+        ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1,
+                        ci='sd', label='R')
 
     ax.set(ylabel='Action probability')
     ax.set(xlabel='Iterations')
@@ -72,8 +77,9 @@ def plot_results(game, mooc, path_data, experiment):
                       label='L')
     ax = sns.lineplot(x='Episode', y='Action 2', linewidth=2.0, data=df1,
                       ci='sd', label='M')
-    ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1,
-                      ci='sd', label='R')
+    if game not in ['iagRNE', 'iagR', 'iagM']:
+        ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1,
+                        ci='sd', label='R')
 
     ax.set(ylabel='Action probability')
     ax.set(xlabel='Iterations')
@@ -86,9 +92,9 @@ def plot_results(game, mooc, path_data, experiment):
 
 
 if __name__ == "__main__":
-    experiment = ['LOLAom', 'LOLAom']
+    experiment = ['LOLAom', 'ACom']
     info = '0M'
-    lookahead = 3
+    lookahead = 1
 
     episodes = 2000
     moocs = ['SER'] #, 'ESR']
@@ -96,5 +102,5 @@ if __name__ == "__main__":
 
     for mooc in moocs:
         for game in games:
-            path_data = f'results/lola_{experiment}_{game}'
+            path_data = f'results/tour_{experiment}_{game}_l{lookahead}'
             plot_results(game, mooc, path_data, experiment)

@@ -167,6 +167,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
     del df1, df2
 
+
 def get_act_probs(act_ep):
     act_probs = np.zeros(env.NUM_ACTIONS)
     for actions in act_ep:
