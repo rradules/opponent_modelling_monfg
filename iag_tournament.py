@@ -79,9 +79,9 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 agents[i] = OppoModelingACAgent(i, hpAC, u[i], env.NUM_ACTIONS)
             elif experiment[i] == 'LOLA' or experiment[i] == 'LOLAom':
                 if info == '0M':
-                    agents[i] = PGDiceBase(i, env, hpL, u[i], u[i - 1], mooc)
+                    agents[i] = PGDiceBase(i, env, hpL, u[i], mooc, u[i - 1])
                 else:
-                    agents[i] = PGDice1M(i, env, hpL, u[i], u[i - 1], mooc)
+                    agents[i] = PGDice1M(i, env, hpL, u[i], mooc, u[i - 1])
         agent1, agent2 = agents
 
         print(agent1.__class__)
@@ -238,15 +238,11 @@ if __name__ == "__main__":
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     # LOLA Agent
-    parser.add_argument('-lookahead', type=int, default=1, help="number of lookaheads")
+    parser.add_argument('-lookahead', type=int, default=4, help="number of lookaheads")
     parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
     parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
-    parser.add_argument('-lr_v', type=float, default=0.1, help="lr values")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
-
-    #parser.add_argument('-baseline', action='store_true', help="Variance reduction")
-    #parser.add_argument('-no-baseline', action='store_false', help="Variance reduction")
 
     # AC agent
     parser.add_argument('-lr_q', type=float, default=0.05, help="lr q")
@@ -269,7 +265,7 @@ if __name__ == "__main__":
     trials = args.trials
     game = args.game
 
-    hpL = HpLolaDice(args.lr_out, args.lr_in, args.lr_v, args.gammaL,
+    hpL = HpLolaDice(args.lr_out, args.lr_in, args.gammaL,
                      args.updates, args.rollout, args.batch)
     hpAC = HpAC(args.lr_q, args.lr_theta, args.gammaAC,
                 args.updates, args.rollout, args.batch)

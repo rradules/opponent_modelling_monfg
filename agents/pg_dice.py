@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.distributions import Categorical
 
 from utils.memory import Memory
+from utils.umodel import GradUGPModel
+import gpytorch
 
 
 def magic_box(x):
@@ -10,11 +13,10 @@ def magic_box(x):
 
 
 class PGDiceBase:
-    def __init__(self, id, env, hp, utility, other_utility, mooc):
+    def __init__(self, id, env, hp, utility, mooc, other_utility=None):
         # own utility function
         self.id = id
         self.utility = utility
-        # opponent utility function
         self.other_utility = other_utility
         self.env = env
         # hyperparameters class
@@ -37,6 +39,7 @@ class PGDiceBase:
         op_objective = self.dice_objective(self.other_utility, op_logprobs, logprobs, op_rewards)
         grad = torch.autograd.grad(op_objective, op_theta, create_graph=True)[0]
         return grad
+
 
     def out_lookahead(self, other_theta):
         memory = self.perform_rollout(other_theta)
@@ -134,3 +137,52 @@ class PGDice1M(PGDiceBase):
         actions = m.sample()
         log_probs_actions = m.log_prob(actions)
         return actions.numpy().astype(int), log_probs_actions
+
+class PGDiceOM(PGDiceBase):
+    def __init__(self, id, env, hp, utility, mooc, other_utility=None):
+        super(PGDiceOM, self).__init__(id, env, hp, utility, mooc, other_utility)
+        self.theta_log = []
+        self.op_theta_log = []
+
+    def update_logs(self, op_theta):
+        self.theta_log.append(self.theta)
+        self.op_theta_log.append(op_theta)
+
+    def _makeUModel(self):
+        op_thetas = torch.cat(self.op_theta_log)
+        thetas = torch.cat(self.theta_log)
+        y_train = (op_thetas[1:] - op_thetas[:-1])/self.hp.lr_in
+        x_train = torch.cat((op_thetas, thetas))
+
+        print(x_train.shape)
+
+        umodel = GradUGPModel(self.env.NUM_ACTIONS, x_train, y_train)
+        umodel.likelihood.train()
+        umodel.train()
+        optimizer = torch.optim.Adam([
+            {'params': umodel.parameters()},  # Includes GaussianLikelihood parameters
+        ], lr=self.hp.lr_GP)
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(umodel.likelihood, umodel)
+
+        training_iterations = 10
+
+        for i in range(training_iterations):
+            optimizer.zero_grad()
+            output = umodel(x_train)
+            loss = -mll(output, y_train)
+            loss.backward()
+            print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
+            optimizer.step()
+
+        return umodel
+
+    def in_lookahead(self, op_theta):
+
+        umodel = self._makeUModel(torch.cat((op_theta, self.theta)))
+        umodel.eval()
+        umodel.likelihood.eval()
+
+        with torch.no_grad(), gpytorch.settings.fast_pred_var():
+            grad = umodel.likelihood(umodel(op_theta))
+
+        return grad

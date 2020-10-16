@@ -26,11 +26,12 @@ values2 = df2[df1.columns[3:5]].to_numpy()
 df1 = df1[df1.columns[5:]]
 df2 = df2[df2.columns[5:]]
 
-theta1 = df1.to_numpy()
-theta2 = df2.to_numpy()
+theta1 = torch.tensor(df1.to_numpy()).float().contiguous()
+theta2 = torch.tensor(df2.to_numpy()).float().contiguous()
 
-train_y1 = torch.tensor(np.diff(theta1, axis=0)/alpha).float().contiguous()
-train_y2 = torch.tensor(np.diff(theta2, axis=0)/alpha).float().contiguous()
+
+train_y1 = (theta1[1:]-theta1[:-1])/alpha
+train_y2 = (theta2[1:]-theta2[:-1])/alpha
 
 theta1 = theta1[:-1]
 theta2 = theta2[:-1]

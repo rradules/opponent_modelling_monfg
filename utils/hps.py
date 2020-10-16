@@ -1,13 +1,12 @@
 class HpLolaDice:
-    def __init__(self, lr_out=0.2, lr_in=0.3, lr_v=0.1, gamma=0.96, updates=500, rollout=150, batch=128, baseline=False):
+    def __init__(self, lr_out=0.2, lr_in=0.3, gamma=0.96, updates=500, rollout=150, batch=128, lr_GP=0.1):
         self.lr_out = lr_out
         self.lr_in = lr_in
-        self.lr_v = lr_v
         self.gamma = gamma
         self.n_update = updates
         self.len_rollout = rollout
         self.batch_size = batch
-        self.use_baseline = baseline
+        self.lr_GP = lr_GP
 
 
 class HpAC:

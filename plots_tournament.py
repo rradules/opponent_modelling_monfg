@@ -94,9 +94,9 @@ def plot_results(game, mooc, path_data, experiment):
 if __name__ == "__main__":
     experiment = ['LOLAom', 'ACom']
     info = '0M'
-    lookahead = 1
+    lookahead = 4
 
-    episodes = 2000
+    episodes = 3000
     moocs = ['SER'] #, 'ESR']
     games = ['iagNE'] #['iag', 'iagNE']
 
