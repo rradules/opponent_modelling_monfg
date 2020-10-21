@@ -5,9 +5,8 @@ import gpytorch
 
 
 class GradUGPModel(gpytorch.models.ExactGP):
-    def __init__(self, act_num, train_x, train_y):
-        self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=act_num, rank=1)
-        super(GradUGPModel, self).__init__(train_x, train_y, self.likelihood)
+    def __init__(self, act_num, train_x, train_y, likelihood):
+        super(GradUGPModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.MultitaskMean(
             gpytorch.means.ConstantMean(), num_tasks=act_num
         )

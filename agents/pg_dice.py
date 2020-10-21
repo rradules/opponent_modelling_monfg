@@ -25,6 +25,7 @@ class PGDiceBase:
         self.mooc = mooc
 
         self.theta = nn.Parameter(torch.zeros(env.NUM_ACTIONS, requires_grad=True))
+        self.op_theta = nn.Parameter(torch.zeros(env.NUM_ACTIONS, requires_grad=True))
         self.theta_optimizer = torch.optim.Adam((self.theta,), lr=hp.lr_out)
 
     def theta_update(self, objective):
@@ -32,17 +33,19 @@ class PGDiceBase:
         objective.backward(retain_graph=True)
         self.theta_optimizer.step()
 
-    def in_lookahead(self, op_theta):
-        op_memory = self.perform_rollout(op_theta, inner=True)
+    def set_op_theta(self, op_theta):
+        self.op_theta = op_theta
+
+    def in_lookahead(self,  umodel=None, likelihood=None):
+        op_memory = self.perform_rollout(self.op_theta, inner=True)
         op_logprobs, logprobs, op_rewards = op_memory.get_content()
 
         op_objective = self.dice_objective(self.other_utility, op_logprobs, logprobs, op_rewards)
-        grad = torch.autograd.grad(op_objective, op_theta, create_graph=True)[0]
-        return grad
+        grad = torch.autograd.grad(op_objective, self.op_theta, create_graph=True)[0]
+        self.op_theta = self.op_theta - self.hp.lr_in * grad
 
-
-    def out_lookahead(self, other_theta):
-        memory = self.perform_rollout(other_theta)
+    def out_lookahead(self):
+        memory = self.perform_rollout(self.op_theta)
         logprobs, other_logprobs, rewards = memory.get_content()
 
         # update self theta
@@ -138,6 +141,7 @@ class PGDice1M(PGDiceBase):
         log_probs_actions = m.log_prob(actions)
         return actions.numpy().astype(int), log_probs_actions
 
+
 class PGDiceOM(PGDiceBase):
     def __init__(self, id, env, hp, utility, mooc, other_utility=None):
         super(PGDiceOM, self).__init__(id, env, hp, utility, mooc, other_utility)
@@ -145,24 +149,29 @@ class PGDiceOM(PGDiceBase):
         self.op_theta_log = []
 
     def update_logs(self, op_theta):
-        self.theta_log.append(self.theta)
+        self.theta_log.append(torch.sigmoid(self.theta))
         self.op_theta_log.append(op_theta)
+        self.theta_log = self.theta_log[-self.hp.GP_win:]
+        self.op_theta_log = self.op_theta_log[-self.hp.GP_win:]
 
-    def _makeUModel(self):
-        op_thetas = torch.cat(self.op_theta_log)
-        thetas = torch.cat(self.theta_log)
-        y_train = (op_thetas[1:] - op_thetas[:-1])/self.hp.lr_in
-        x_train = torch.cat((op_thetas, thetas))
+    def makeUModel(self):
+        y_train = torch.tensor(np.diff(self.op_theta_log, axis=0)/self.hp.lr_in).float().contiguous()
+        op_thetas = torch.tensor(self.op_theta_log)
+        thetas = torch.stack(self.theta_log)
 
-        print(x_train.shape)
+        op_thetas = op_thetas[:-1]
+        thetas = thetas[:-1]
+        x_train = torch.cat((op_thetas, thetas), dim=1).float().contiguous()
 
-        umodel = GradUGPModel(self.env.NUM_ACTIONS, x_train, y_train)
-        umodel.likelihood.train()
+        likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=self.env.NUM_ACTIONS,
+                                                                      rank=1)
+        umodel = GradUGPModel(self.env.NUM_ACTIONS, x_train, y_train, likelihood)
+        likelihood.train()
         umodel.train()
         optimizer = torch.optim.Adam([
             {'params': umodel.parameters()},  # Includes GaussianLikelihood parameters
         ], lr=self.hp.lr_GP)
-        mll = gpytorch.mlls.ExactMarginalLogLikelihood(umodel.likelihood, umodel)
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, umodel)
 
         training_iterations = 10
 
@@ -170,19 +179,24 @@ class PGDiceOM(PGDiceBase):
             optimizer.zero_grad()
             output = umodel(x_train)
             loss = -mll(output, y_train)
-            loss.backward()
-            print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
+            loss.backward(retain_graph=True)
+            #print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
             optimizer.step()
 
-        return umodel
+        return umodel, likelihood
 
-    def in_lookahead(self, op_theta):
-
-        umodel = self._makeUModel(torch.cat((op_theta, self.theta)))
+    def in_lookahead(self, umodel, likelihood):
         umodel.eval()
-        umodel.likelihood.eval()
+        likelihood.eval()
+
+        pred_point = torch.cat((self.op_theta, torch.sigmoid(self.theta))).float().contiguous()
+        pred_point = torch.unsqueeze(pred_point, dim=0)
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            grad = umodel.likelihood(umodel(op_theta))
+            # TODO add paper discussion about taking mean versus sample GP
+            grad = likelihood(umodel(pred_point)).mean
+        self.op_theta = self.op_theta - self.hp.lr_in * grad.numpy()[0]
 
-        return grad
+    def _sampleGP(self):
+        #TODO add paper discussion about taking mean versus sample GP
+        pass

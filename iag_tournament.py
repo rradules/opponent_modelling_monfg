@@ -6,7 +6,7 @@ import pandas as pd
 
 from envs import IAG
 from utils.hps import HpLolaDice, HpAC
-from agents.pg_dice import PGDiceBase, PGDice1M
+from agents.pg_dice import PGDiceBase, PGDice1M, PGDiceOM
 from agents.ala_ac_om import ActorCriticAgent, OppoModelingACAgent
 from utils.utils import mkdir_p
 from collections import Counter
@@ -51,24 +51,26 @@ def step(agent1, agent2):
     return rewards1, rewards2, actions1, actions2
 
 
-def LOLA_loop(agent1, theta2, agent2=None, theta1=None):
-    for k in range(n_lookaheads):
-        grad2 = agent1.in_lookahead(theta2)
-        theta2 = theta2 - hpL.lr_in * grad2
-
-        if agent2 is not None:
-            grad1 = agent2.in_lookahead(theta1)
-            theta1 = theta1 - hpL.lr_in * grad1
-
+def LOLA_loop(agent, op_theta, lookahead):
+    for k in range(lookahead):
+        agent.set_op_theta(op_theta)
+        agent.in_lookahead()
     # update own parameters from out_lookahead:
-    agent1.out_lookahead(theta2)
-    if agent2 is not None:
-        agent2.out_lookahead(theta1)
+    agent.out_lookahead()
 
 
-def play(n_lookaheads, trials, info, mooc, game, experiment):
+def LOLAom_loop(agent, op_theta, lookahead):
+    for k in range(lookahead):
+        agent.set_op_theta(op_theta)
+        if k == 0:
+            umodel, likelihood = agent.makeUModel()
+        agent.in_lookahead(umodel, likelihood)
+    # update own parameters from out_lookahead:
+    agent.out_lookahead()
+
+def play(n_lookaheads1, n_lookaheads2, trials, info, mooc, game, experiment):
     state_distribution_log = np.zeros((env.NUM_ACTIONS, env.NUM_ACTIONS))
-    print("start iterations with", n_lookaheads, "lookaheads:")
+    print("start iterations with", n_lookaheads1, 'and', n_lookaheads2, "lookaheads:")
 
     for trial in range(trials):
         agents = [None, None]
@@ -77,11 +79,13 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 agents[i] = ActorCriticAgent(i, hpAC, u[i], env.NUM_ACTIONS)
             elif experiment[i] == 'ACom':
                 agents[i] = OppoModelingACAgent(i, hpAC, u[i], env.NUM_ACTIONS)
-            elif experiment[i] == 'LOLA' or experiment[i] == 'LOLAom':
+            elif experiment[i] == 'LOLA':
                 if info == '0M':
                     agents[i] = PGDiceBase(i, env, hpL, u[i], mooc, u[i - 1])
                 else:
                     agents[i] = PGDice1M(i, env, hpL, u[i], mooc, u[i - 1])
+            elif experiment[i] == 'LOLAom':
+                agents[i] = PGDiceOM(i, env, hpL, u[i], mooc)
         agent1, agent2 = agents
 
         print(agent1.__class__)
@@ -89,6 +93,9 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
         for update in range(hpL.n_update):
             # rollout actual current policies:
+
+            if update % 100 == 0:
+                print(f"Episode {update}...")
             r1, r2, a1, a2 = step(agent1, agent2)
 
             act_probs1 = get_act_probs(a1)
@@ -99,36 +106,47 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             if experiment == ['LOLA', 'LOLA']:
                 theta1_ = agent1.theta.clone().detach().requires_grad_(True)
                 theta2_ = agent2.theta.clone().detach().requires_grad_(True)
-                LOLA_loop(agent1, theta2_, agent2, theta1_)
+                LOLA_loop(agent1, theta2_, n_lookaheads1)
+                LOLA_loop(agent2, theta1_, n_lookaheads2)
 
             # if LOLAom-LOLAom
             if experiment == ['LOLAom', 'LOLAom']:
-                LOLA_loop(agent1, torch.tensor(np.log(act_probs2), requires_grad=True),
-                          agent2, torch.tensor(np.log(act_probs1), requires_grad=True))
+                agent1.update_logs(np.log(act_probs2))
+                agent2.update_logs(np.log(act_probs1))
+                if update > 1:
+                    LOLAom_loop(agent1, torch.tensor(np.log(act_probs2)), n_lookaheads1)
+                    LOLAom_loop(agent2, torch.tensor(np.log(act_probs1)), n_lookaheads2)
 
             if experiment == ['LOLAom', 'LOLA']:
-                theta1_ = agent1.theta.clone().detach().requires_grad_(True)
-                LOLA_loop(agent1, torch.tensor(-np.log(act_probs2), requires_grad=True),
-                          agent2, theta1_)
+                agent1.update_logs(np.log(act_probs2))
+                if update > 1:
+                    theta1_ = agent1.theta.clone().detach().requires_grad_(True)
+                    LOLAom_loop(agent1, torch.tensor(np.log(act_probs2)), n_lookaheads1)
+                    LOLA_loop(agent2, theta1_, n_lookaheads2)
 
             # if LOLAom-LOLAom
             if experiment == ['LOLA', 'LOLAom']:
-                theta2_ = agent1.theta.clone().detach().requires_grad_(True)
-                LOLA_loop(agent1, theta2_,
-                          agent2, torch.tensor(-np.log(act_probs1), requires_grad=True))
+                agent2.update_logs(np.log(act_probs1))
+                if update > 1:
+                    theta2_ = agent1.theta.clone().detach().requires_grad_(True)
+                    LOLA_loop(agent1, theta2_, n_lookaheads1)
+                    LOLAom_loop(agent2, torch.tensor(np.log(act_probs1)), n_lookaheads2)
 
             if experiment == ['AC', 'AC']:
                 agent1.update(a1, r1)
                 agent2.update(a2, r2)
 
             if experiment == ['ACom', 'LOLAom']:
-                agent1.update(a1, r1, act_probs2, a2)
-                LOLA_loop(agent2, torch.tensor(-np.log(act_probs1), requires_grad=True))
+                agent2.update_logs(np.log(act_probs1))
+                if update > 1:
+                    agent1.update(a1, r1, act_probs2, a2)
+                    LOLAom_loop(agent2, torch.tensor(np.log(act_probs1)), n_lookaheads2)
 
             if experiment == ['LOLAom', 'ACom']:
-                LOLA_loop(agent1, torch.tensor(-np.log(act_probs2), requires_grad=True))
-                agent2.update(a2, r2, act_probs1, a1)
-
+                agent1.update_logs(np.log(act_probs2))
+                if update > 1:
+                    LOLAom_loop(agent1, torch.tensor(np.log(act_probs2)), n_lookaheads1)
+                    agent2.update(a2, r2, act_probs1, a1)
 
             if experiment == ['ACom', 'ACom']:
                 agent1.update(a1, r1, act_probs2, a2)
@@ -142,8 +160,6 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 agent1.update(a1, r1, act_probs2, a2)
                 agent2.update(a2, r2)
 
-            # TODO: Mixed version tournament for LOLA
-
             if update >= (0.1 * hpL.n_update):
                 for rol_a in range(len(a1)):
                     for batch_a in range(len(a1[rol_a])):
@@ -153,36 +169,35 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             ret2, score2 = get_return(r2, u2, mooc)
 
             if env.NUM_ACTIONS == 2:
-                act_hist_log[0].append([update, trial, n_lookaheads,
+                act_hist_log[0].append([update, trial, n_lookaheads1,
                                         act_probs1[0], act_probs1[1]])
-                act_hist_log[1].append([update, trial, n_lookaheads,
+                act_hist_log[1].append([update, trial, n_lookaheads2,
                                         act_probs2[0], act_probs2[1]])
 
-                trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
-                                        act_probs1[0], act_probs1[1]])
-                trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
-                                        act_probs2[0], act_probs2[1]])
+                trace_log[0].append([update, trial, n_lookaheads1, ret1[0], ret1[1],
+                                     act_probs1[0], act_probs1[1]])
+                trace_log[1].append([update, trial, n_lookaheads2, ret2[0], ret2[1],
+                                     act_probs2[0], act_probs2[1]])
 
             else:
-                act_hist_log[0].append([update, trial, n_lookaheads,
+                act_hist_log[0].append([update, trial, n_lookaheads1,
                                         act_probs1[0], act_probs1[1], act_probs1[2]])
-                act_hist_log[1].append([update, trial, n_lookaheads,
+                act_hist_log[1].append([update, trial, n_lookaheads2,
                                         act_probs2[0], act_probs2[1], act_probs2[2]])
 
-                trace_log[0].append([update, trial, n_lookaheads, ret1[0], ret1[1],
-                                        act_probs1[0], act_probs1[1], act_probs1[2]])
-                trace_log[1].append([update, trial, n_lookaheads, ret2[0], ret2[1],
-                                        act_probs2[0], act_probs2[1], act_probs2[2]])
+                trace_log[0].append([update, trial, n_lookaheads1, ret1[0], ret1[1],
+                                     act_probs1[0], act_probs1[1], act_probs1[2]])
+                trace_log[1].append([update, trial, n_lookaheads2, ret2[0], ret2[1],
+                                     act_probs2[0], act_probs2[1], act_probs2[2]])
 
-
-            payoff_episode_log1.append([update, trial, n_lookaheads, score1])
-            payoff_episode_log2.append([update, trial, n_lookaheads, score2])
+            payoff_episode_log1.append([update, trial, n_lookaheads1, score1])
+            payoff_episode_log2.append([update, trial, n_lookaheads2, score2])
 
     columns = ['Episode', 'Trial', 'Lookahead', 'Payoff']
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-    path_data = f'results/tour_{experiment}_{game}_l{n_lookaheads}'  # /{mooc}/{hp.use_baseline}'
+    path_data = f'results/tour_{experiment}_{game}_l{n_lookaheads1}_{n_lookaheads2}'  # /{mooc}/{hp.use_baseline}'
     mkdir_p(path_data)
 
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -191,7 +206,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     state_distribution_log /= hpL.batch_size * (0.9 * hpL.n_update) * trials * hpL.len_rollout
     print(np.sum(state_distribution_log))
     df = pd.DataFrame(state_distribution_log)
-    df.to_csv(f'{path_data}/states_{info}_{n_lookaheads}.csv', index=False, header=None)
+    df.to_csv(f'{path_data}/states_{info}_{n_lookaheads1}_{n_lookaheads2}.csv', index=False, header=None)
 
     if env.NUM_ACTIONS == 3:
         columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2', 'Action 3']
@@ -205,14 +220,12 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
 
-
     df1 = pd.DataFrame(trace_log[0], columns=columns1)
     df2 = pd.DataFrame(trace_log[1], columns=columns1)
 
     df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
     del df1, df2
-
 
 
 def get_act_probs(act_ep):
@@ -230,15 +243,16 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=30, help="number of trials")
-    parser.add_argument('-updates', type=int, default=3000, help="updates")
+    parser.add_argument('-trials', type=int, default=5, help="number of trials")
+    parser.add_argument('-updates', type=int, default=1000, help="updates")
     parser.add_argument('-batch', type=int, default=64, help="batch size")
     parser.add_argument('-rollout', type=int, default=1, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     # LOLA Agent
-    parser.add_argument('-lookahead', type=int, default=4, help="number of lookaheads")
+    parser.add_argument('-lookahead1', type=int, default=5, help="number of lookaheads for agent 1")
+    parser.add_argument('-lookahead2', type=int, default=5, help="number of lookaheads for agent 1")
     parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
     parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
@@ -259,9 +273,11 @@ if __name__ == "__main__":
 
     u = [u1, u2]
 
-    n_lookaheads = args.lookahead
+    n_lookaheads1 = args.lookahead1
+    n_lookaheads2 = args.lookahead1
     mooc = args.mooc
     seed = args.seed
+    # TODO: set seed properly
     trials = args.trials
     game = args.game
 
@@ -281,4 +297,4 @@ if __name__ == "__main__":
     # for i in range(n_lookaheads):
     # torch.manual_seed(seed)
     # np.random.seed(seed)
-    play(n_lookaheads, trials, info, mooc, game, experiment)
+    play(n_lookaheads1, n_lookaheads2, trials, info, mooc, game, experiment)
