@@ -3,7 +3,7 @@
 
 ## AC-OM (Actor Critic with Opponent Modelling) 
 ## ACOLADE (Actor Critic with Opponent Learning Awareness and moDEling) 
-## LOLA-Dice-UM (with Utility Model) 
+## LOLA-OUM-dice (with Opponent and Utility Model) 
 
 
 
