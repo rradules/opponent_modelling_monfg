@@ -143,16 +143,17 @@ class PGDice1M(PGDiceBase):
 
 
 class PGDiceOM(PGDiceBase):
-    def __init__(self, id, env, hp, utility, mooc, other_utility=None):
+    def __init__(self, id, env, hp, utility, mooc, other_utility=None, hpGP=None):
         super(PGDiceOM, self).__init__(id, env, hp, utility, mooc, other_utility)
         self.theta_log = []
         self.op_theta_log = []
+        self.hpGP = hpGP
 
     def update_logs(self, op_theta):
         self.theta_log.append(torch.sigmoid(self.theta))
         self.op_theta_log.append(op_theta)
-        self.theta_log = self.theta_log[-self.hp.GP_win:]
-        self.op_theta_log = self.op_theta_log[-self.hp.GP_win:]
+        self.theta_log = self.theta_log[-self.hpGP.GP_win:]
+        self.op_theta_log = self.op_theta_log[-self.hpGP.GP_win:]
 
     def makeUModel(self):
         y_train = torch.tensor(np.diff(self.op_theta_log, axis=0)/self.hp.lr_in).float().contiguous()
@@ -170,7 +171,7 @@ class PGDiceOM(PGDiceBase):
         umodel.train()
         optimizer = torch.optim.Adam([
             {'params': umodel.parameters()},  # Includes GaussianLikelihood parameters
-        ], lr=self.hp.lr_GP)
+        ], lr=self.hpGP.lr_GP)
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, umodel)
 
         training_iterations = 10

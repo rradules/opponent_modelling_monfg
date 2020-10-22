@@ -5,9 +5,9 @@ import torch
 import pandas as pd
 
 from envs import IAG
-from utils.hps import HpLolaDice, HpAC
+from utils.hps import HpLolaDice, HpAC, HpGP
 from agents.pg_dice import PGDiceBase, PGDice1M, PGDiceOM
-from agents.ala_ac_om import ActorCriticAgent, OppoModelingACAgent
+from agents.ala_ac_om import ActorCriticAgent, OppoModelingACAgent, UMOMACAgent
 from utils.utils import mkdir_p
 from collections import Counter
 import argparse
@@ -51,6 +51,16 @@ def step(agent1, agent2):
     return rewards1, rewards2, actions1, actions2
 
 
+def AComGP_loop(agent, actions, rewards, op_actions, op_theta, lookahead):
+    for k in range(lookahead):
+        agent.set_op_theta(op_theta)
+        if k == 0:
+            umodel, likelihood = agent.makeUModel()
+        agent.in_lookahead(umodel, likelihood)
+    # update own parameters:
+    agent.update(actions, rewards, opp_actions=op_actions)
+
+
 def LOLA_loop(agent, op_theta, lookahead):
     for k in range(lookahead):
         agent.set_op_theta(op_theta)
@@ -79,13 +89,15 @@ def play(n_lookaheads1, n_lookaheads2, trials, info, mooc, game, experiment):
                 agents[i] = ActorCriticAgent(i, hpAC, u[i], env.NUM_ACTIONS)
             elif experiment[i] == 'ACom':
                 agents[i] = OppoModelingACAgent(i, hpAC, u[i], env.NUM_ACTIONS)
+            elif experiment[i] == 'AComGP':
+                agents[i] = UMOMACAgent(i, hpAC, u[i], env.NUM_ACTIONS, hpGP=hpGP)
             elif experiment[i] == 'LOLA':
                 if info == '0M':
                     agents[i] = PGDiceBase(i, env, hpL, u[i], mooc, u[i - 1])
                 else:
                     agents[i] = PGDice1M(i, env, hpL, u[i], mooc, u[i - 1])
             elif experiment[i] == 'LOLAom':
-                agents[i] = PGDiceOM(i, env, hpL, u[i], mooc)
+                agents[i] = PGDiceOM(i, env, hpL, u[i], mooc, hpGP=hpGP)
         agent1, agent2 = agents
 
         print(agent1.__class__)
@@ -136,28 +148,41 @@ def play(n_lookaheads1, n_lookaheads2, trials, info, mooc, game, experiment):
                 agent1.update(a1, r1)
                 agent2.update(a2, r2)
 
+            if experiment == ['AComGP', 'AComGP']:
+                agent1.update_logs(act_probs2)
+                agent2.update_logs(act_probs1)
+                if update > 1:
+                    AComGP_loop(agent1, a1, r1, a2, act_probs2, n_lookaheads1)
+                    AComGP_loop(agent2, a2, r2, a1, act_probs1, n_lookaheads2)
+
             if experiment == ['ACom', 'LOLAom']:
                 agent2.update_logs(np.log(act_probs1))
                 if update > 1:
-                    agent1.update(a1, r1, act_probs2, a2)
+                    agent1.set_op_theta(act_probs2)
+                    agent1.update(a1, r1, a2)
                     LOLAom_loop(agent2, torch.tensor(np.log(act_probs1)), n_lookaheads2)
 
             if experiment == ['LOLAom', 'ACom']:
                 agent1.update_logs(np.log(act_probs2))
                 if update > 1:
                     LOLAom_loop(agent1, torch.tensor(np.log(act_probs2)), n_lookaheads1)
-                    agent2.update(a2, r2, act_probs1, a1)
+                    agent2.set_op_theta(act_probs1)
+                    agent2.update(a2, r2, a1)
 
             if experiment == ['ACom', 'ACom']:
-                agent1.update(a1, r1, act_probs2, a2)
-                agent2.update(a2, r2, act_probs1, a1)
+                agent1.set_op_theta(act_probs2)
+                agent1.update(a1, r1, a2)
+                agent2.set_op_theta(act_probs1)
+                agent2.update(a2, r2, a1)
 
             if experiment == ['AC', 'ACom']:
                 agent1.update(a1, r1)
-                agent2.update(a2, r2, act_probs1, a1)
+                agent2.set_op_theta(act_probs1)
+                agent2.update(a2, r2, a1)
 
             if experiment == ['ACom', 'AC']:
-                agent1.update(a1, r1, act_probs2, a2)
+                agent1.set_op_theta(act_probs2)
+                agent1.update(a1, r1, a2)
                 agent2.update(a2, r2)
 
             if update >= (0.1 * hpL.n_update):
@@ -243,7 +268,7 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=5, help="number of trials")
+    parser.add_argument('-trials', type=int, default=30, help="number of trials")
     parser.add_argument('-updates', type=int, default=1000, help="updates")
     parser.add_argument('-batch', type=int, default=64, help="batch size")
     parser.add_argument('-rollout', type=int, default=1, help="rollout size")
@@ -251,8 +276,6 @@ if __name__ == "__main__":
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     # LOLA Agent
-    parser.add_argument('-lookahead1', type=int, default=5, help="number of lookaheads for agent 1")
-    parser.add_argument('-lookahead2', type=int, default=5, help="number of lookaheads for agent 1")
     parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
     parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
@@ -264,7 +287,10 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='LOLAom-ACom', help="experiment")
+    parser.add_argument('-experiment', type=str, default='AC-AC', help="experiment")
+
+    parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
+    parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
 
     args = parser.parse_args()
 
@@ -285,6 +311,8 @@ if __name__ == "__main__":
                      args.updates, args.rollout, args.batch)
     hpAC = HpAC(args.lr_q, args.lr_theta, args.gammaAC,
                 args.updates, args.rollout, args.batch)
+
+    hpGP = HpGP()
 
     payout_mat = get_payoff_matrix(game)
     print(payout_mat)

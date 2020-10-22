@@ -10,6 +10,12 @@ class HpLolaDice:
         self.lr_GP = lr_GP
         self.GP_win = GP_win
 
+class HpGP:
+    def __init__(self, iter=10, lr_GP=0.1, GP_win=50):
+        self.iter = iter
+        self.lr_GP = lr_GP
+        self.GP_win = GP_win
+
 
 class HpAC:
     def __init__(self, lr_q=0.05, lr_theta=0.05, gamma=0.96, updates=500, rollout=150, batch=128):
