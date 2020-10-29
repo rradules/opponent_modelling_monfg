@@ -92,7 +92,7 @@ def plot_results(game, mooc, path_data, experiment):
 
 
 if __name__ == "__main__":
-    experiment = ['AC', 'AC']
+    experiment = ['LOLAom', 'ACom']
     info = '0M'
     l1 = 1
     l2 = 1

@@ -268,16 +268,17 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=30, help="number of trials")
-    parser.add_argument('-updates', type=int, default=1000, help="updates")
-    parser.add_argument('-batch', type=int, default=64, help="batch size")
+    parser.add_argument('-trials', type=int, default=100, help="number of trials")
+    parser.add_argument('-updates', type=int, default=3000, help="updates")
+    parser.add_argument('-batch', type=int, default=1, help="batch size")
+    #TODO remove the rollout, since it will always be 1
     parser.add_argument('-rollout', type=int, default=1, help="rollout size")
     parser.add_argument('-mooc', type=str, default='SER', help="MOO criterion")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     # LOLA Agent
-    parser.add_argument('-lr_out', type=float, default=0.2, help="lr outer loop")
-    parser.add_argument('-lr_in', type=float, default=0.3, help="lr inner loop")
+    parser.add_argument('-lr_out', type=float, default=0.1, help="lr outer loop")
+    parser.add_argument('-lr_in', type=float, default=0.2, help="lr inner loop")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
 
@@ -287,7 +288,7 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='AC-AC', help="experiment")
+    parser.add_argument('-experiment', type=str, default='LOLAom-ACom', help="experiment")
 
     parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
@@ -321,6 +322,9 @@ if __name__ == "__main__":
     print(experiment)
 
     info = args.mem
+
+    print(args.lr_q, args.lr_theta)
+
 
     # for i in range(n_lookaheads):
     # torch.manual_seed(seed)

@@ -18,7 +18,7 @@ class HpGP:
 
 
 class HpAC:
-    def __init__(self, lr_q=0.05, lr_theta=0.05, gamma=0.96, updates=500, rollout=150, batch=128):
+    def __init__(self, lr_q=0.01, lr_theta=0.1, gamma=0.96, updates=500, rollout=150, batch=128):
         self.lr_q = lr_q
         self.lr_theta = lr_theta
         self.gamma = gamma

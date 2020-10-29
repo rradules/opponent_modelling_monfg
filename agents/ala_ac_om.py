@@ -25,19 +25,22 @@ class ActorCriticAgent:
         return action, theta
 
     def _apply_discount(self, rewards):
-        cum_discount = np.cumprod(self.hp.gamma * np.ones(rewards.shape), axis=-1) / self.hp.gamma
-        discounted_rewards = np.sum(rewards * cum_discount, axis=-1)
+        cum_discount = np.cumprod(self.hp.gamma * np.ones(rewards.shape), axis=0) / self.hp.gamma
+        discounted_rewards = np.sum(rewards * cum_discount, axis=0)
         return discounted_rewards
 
     def update(self, actions, payoff, opp_actions=None):
         # update Q
-        # average return over rollout;
-        actions = np.array(actions)
-        means = self._apply_discount(np.array(payoff))
-        for i, act in enumerate(actions[:, 0]):
-            self.Q[act] += self.lr_q * (means[i, :] - self.Q[act])
 
-        # expected utility
+        actions = np.array(actions)
+        # average return over rollout;
+        means = self._apply_discount(np.array(payoff))
+
+        for i, act in enumerate(actions[0, :]):
+            self.Q[act] += self.lr_q * (means[:, i] - self.Q[act])
+
+        #V = np.max(self.Q, axis=0) A2C?
+        # expected return
         u = self.policy @ self.Q
 
         # gradient: dJ / du
@@ -80,8 +83,8 @@ class OppoModelingACAgent(ActorCriticAgent):
 
         means = self._apply_discount(np.array(payoff))
 
-        for i, act in enumerate(actions[:, 0]):  # each first action in rollout
-            self.Q[opp_actions[i, 0], act, :] += self.lr_q * (means[i, :] - self.Q[opp_actions[i, 0], act, :])
+        for i, act in enumerate(actions[0, :]):  # each first action in rollout
+            self.Q[opp_actions[0, i], act, :] += self.lr_q * (means[:, i] - self.Q[opp_actions[0, i], act, :])
 
         expected_q = self.op_theta @ self.Q
 
