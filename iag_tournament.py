@@ -16,7 +16,7 @@ from envs.monfgs import get_payoff_matrix
 payoff_episode_log1 = []
 payoff_episode_log2 = []
 act_hist_log = [[], []]
-trace_log = [[], []]
+#trace_log = [[], []]
 
 
 def get_return(rewards, utility, mooc):
@@ -84,6 +84,8 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     print("start iterations with", n_lookaheads[0], 'and', n_lookaheads[1], "lookaheads:")
 
     for trial in range(trials):
+        if trial % 10 == 0:
+            print(f"Trial {trial}...")
         agents = [None, None]
         for i in range(len(experiment)):
             if experiment[i] == 'AC':
@@ -101,13 +103,13 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 agents[i] = PGDiceOM(i, env, hpL, u[i], mooc, hpGP=hpGP)
         #agent1, agent2 = agents
 
-        print(agents[0].__class__)
-        print(agents[1].__class__)
+        #print(agents[0].__class__)
+        #print(agents[1].__class__)
 
         for update in range(hpL.n_update):
             # rollout actual current policies:
 
-            if update % 100 == 0:
+            if update % 1000 == 0:
                 print(f"Episode {update}...")
             r, a = step(agents)
 
@@ -152,19 +154,53 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                     act_hist_log[i].append([update, trial, n_lookaheads[i],
                                             act_probs[i][0], act_probs[i][1]])
 
-                    trace_log[i].append([update, trial, n_lookaheads[i], ret1[0], ret1[1],
-                                         act_probs[i][0], act_probs[i][1]])
+                    #trace_log[i].append([update, trial, n_lookaheads[i], ret1[0], ret1[1],
+                    #                     act_probs[i][0], act_probs[i][1]])
             else:
                 for i in range(len(act_hist_log)):
                     act_hist_log[i].append([update, trial, n_lookaheads[i],
                                             act_probs[i][0], act_probs[i][1], act_probs[i][2]])
 
-                    trace_log[i].append([update, trial, n_lookaheads[i], ret1[0], ret1[1],
-                                        act_probs[i][0], act_probs[i][1], act_probs[i][2]])
+                    #trace_log[i].append([update, trial, n_lookaheads[i], ret1[0], ret1[1],
+                    #                    act_probs[i][0], act_probs[i][1], act_probs[i][2]])
 
             payoff_episode_log1.append([update, trial, n_lookaheads[0], score1])
             payoff_episode_log2.append([update, trial, n_lookaheads[1], score2])
 
+        if trial % 5 == 0:
+            columns = ['Episode', 'Trial', 'Lookahead', 'Payoff']
+            df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
+            df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
+
+            path_data = f'results/tour_{experiment}_{game}_l{n_lookaheads[0]}_{n_lookaheads[1]}'  # /{mooc}/{hp.use_baseline}'
+            mkdir_p(path_data)
+
+            df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
+            df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
+
+            state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * (trial+1) * hpL.len_rollout)
+            df = pd.DataFrame(state_distribution)
+            print(np.sum(state_distribution))
+            df.to_csv(f'{path_data}/states_{info}_{n_lookaheads[0]}_{n_lookaheads[1]}.csv', index=False, header=None)
+
+            if env.NUM_ACTIONS == 3:
+                columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2', 'Action 3']
+                #columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2', 'Action 3']
+            else:
+                columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2']
+                #columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2']
+            df1 = pd.DataFrame(act_hist_log[0], columns=columns)
+            df2 = pd.DataFrame(act_hist_log[1], columns=columns)
+
+            df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
+            df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
+
+            #df1 = pd.DataFrame(trace_log[0], columns=columns1)
+            #df2 = pd.DataFrame(trace_log[1], columns=columns1)
+
+            #df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
+            #df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
+            del df1, df2, df
     columns = ['Episode', 'Trial', 'Lookahead', 'Payoff']
     df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
     df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
@@ -175,29 +211,31 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
-    state_distribution_log /= hpL.batch_size * (0.9 * hpL.n_update) * trials * hpL.len_rollout
-    print(np.sum(state_distribution_log))
-    df = pd.DataFrame(state_distribution_log)
+    state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * trials * hpL.len_rollout)
+    df = pd.DataFrame(state_distribution)
+    print(np.sum(state_distribution))
     df.to_csv(f'{path_data}/states_{info}_{n_lookaheads[0]}_{n_lookaheads[1]}.csv', index=False, header=None)
 
     if env.NUM_ACTIONS == 3:
         columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2', 'Action 3']
-        columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2', 'Action 3']
+        # columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2', 'Action 3']
     else:
         columns = ['Episode', 'Trial', 'Lookahead', 'Action 1', 'Action 2']
-        columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2']
+        # columns1 = ['Episode', 'Trial', 'Lookahead', 'O1', 'O2', 'Action 1', 'Action 2']
     df1 = pd.DataFrame(act_hist_log[0], columns=columns)
     df2 = pd.DataFrame(act_hist_log[1], columns=columns)
 
     df1.to_csv(f'{path_data}/agent1_probs_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_probs_{info}.csv', index=False)
 
-    df1 = pd.DataFrame(trace_log[0], columns=columns1)
-    df2 = pd.DataFrame(trace_log[1], columns=columns1)
+    # df1 = pd.DataFrame(trace_log[0], columns=columns1)
+    # df2 = pd.DataFrame(trace_log[1], columns=columns1)
 
-    df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
-    df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
-    del df1, df2
+    # df1.to_csv(f'{path_data}/agent1_traces_{info}.csv', index=False)
+    # df2.to_csv(f'{path_data}/agent2_traces_{info}.csv', index=False)
+    del df1, df2, df
+
+
 
 
 def get_act_probs(act_ep):
@@ -215,7 +253,7 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=100, help="number of trials")
+    parser.add_argument('-trials', type=int, default=30, help="number of trials")
     parser.add_argument('-updates', type=int, default=3000, help="updates")
     parser.add_argument('-batch', type=int, default=1, help="batch size")
     #TODO remove the rollout, since it will always be 1
@@ -235,7 +273,7 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='LOLAom-LOLAom', help="experiment")
+    parser.add_argument('-experiment', type=str, default='ACom-ACom', help="experiment")
 
     parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
