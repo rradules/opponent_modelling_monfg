@@ -70,6 +70,7 @@ class OppoModelingACAgent(ActorCriticAgent):
         super().__init__(id, hp, utility_function, num_actions)
 
         self.Q = np.zeros((num_actions, num_actions, 2))
+        self.lr_q = 1
 
         self.op_theta = []
 
@@ -120,6 +121,7 @@ class UMOMACAgent(OppoModelingACAgent):
         self.hpGP = hpGP
         self.theta_log = []
         self.op_theta_log = []
+        self.lr_q = 1
 
         self.Q = np.zeros((num_actions, num_actions, 2))
         self.op_theta = []
