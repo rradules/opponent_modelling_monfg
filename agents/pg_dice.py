@@ -64,7 +64,8 @@ class PGDiceBase:
 
     def act_opp(self, batch_states, theta):
         batch_states = torch.tensor(batch_states)
-        if torch.sum(theta).item() == 1:
+        # make sure probabilities are not < 0
+        if torch.sum(theta).item() == 1.0 and True not in theta.le(0):
             m = Categorical(theta)
         else:
             probs = torch.sigmoid(theta)
@@ -174,9 +175,7 @@ class PGDiceOM(PGDiceBase):
         ], lr=self.hpGP.lr_GP)
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, umodel)
 
-        training_iterations = 10
-
-        for i in range(training_iterations):
+        for i in range(self.hpGP.iter):
             optimizer.zero_grad()
             output = umodel(x_train)
             loss = -mll(output, y_train)

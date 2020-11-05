@@ -54,6 +54,7 @@ def step(agents):
 def AComGP_loop(agent, actions, rewards, op_actions, op_theta, lookahead):
     for k in range(lookahead):
         agent.set_op_theta(op_theta)
+        #print(f'Lookahead loop {k}')
         if k == 0:
             umodel, likelihood = agent.makeUModel()
         agent.in_lookahead(umodel, likelihood)
@@ -90,7 +91,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
         for i in range(len(experiment)):
             if experiment[i] == 'AC':
                 agents[i] = ActorCriticAgent(i, hpAC, u[i], env.NUM_ACTIONS)
-            elif experiment[i] == 'ACom':
+            elif experiment[i] == 'ACom' or experiment[i] == 'ACoa':
                 agents[i] = OppoModelingACAgent(i, hpAC, u[i], env.NUM_ACTIONS)
             elif experiment[i] == 'AComGP':
                 agents[i] = UMOMACAgent(i, hpAC, u[i], env.NUM_ACTIONS, hpGP=hpGP)
@@ -109,19 +110,49 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
         for update in range(hpL.n_update):
             # rollout actual current policies:
 
-            if update % 1000 == 0:
+            if update % 100 == 0:
                 print(f"Episode {update}...")
             r, a = step(agents)
 
             act_probs = [get_act_probs(a[0]), get_act_probs(a[1])]
 
-            # if LOLA-LOLA
-            # copy other's parameters:
             if experiment == ['LOLA', 'LOLA']:
                 theta1_ = agents[0].theta.clone().detach().requires_grad_(True)
                 theta2_ = agents[1].theta.clone().detach().requires_grad_(True)
                 LOLA_loop(agents[0], theta2_, n_lookaheads[0])
                 LOLA_loop(agents[1], theta1_, n_lookaheads[1])
+
+            if experiment == ['ACoa', 'ACoa']:
+                theta1_ = agents[0].policy
+                theta2_ = agents[1].policy
+                agents[0].set_op_theta(theta2_)
+                agents[1].set_op_theta(theta1_)
+                agents[0].update(a[0], r[0], a[1])
+                agents[1].update(a[1], r[1], a[0])
+
+            if experiment == ['LOLA', 'ACoa']:
+                theta1_ = torch.sigmoid(agents[0].theta.clone().detach())
+                theta2_ = torch.tensor(agents[1].policy).requires_grad_(True)
+                LOLA_loop(agents[0], theta2_, n_lookaheads[0])
+                agents[1].set_op_theta(theta1_.numpy())
+                agents[1].update(a[1], r[1], a[0])
+
+            if experiment == ['ACoa', 'LOLA']:
+                theta1_ = torch.tensor(agents[0].policy).requires_grad_(True)
+                theta2_ = torch.sigmoid(agents[1].theta.clone().detach())
+                LOLA_loop(agents[1], theta1_, n_lookaheads[1])
+                agents[0].set_op_theta(theta2_.numpy())
+                agents[0].update(a[0], r[0], a[1])
+
+            if experiment == ['LOLA', 'AC']:
+                theta2_ = torch.tensor(np.log(agents[1].policy)).requires_grad_(True)
+                LOLA_loop(agents[0], theta2_, n_lookaheads[0])
+                agents[1].update(a[1], r[1])
+
+            if experiment == ['AC', 'LOLA']:
+                theta1_ = torch.tensor(np.log(agents[1].policy)).requires_grad_(True)
+                LOLA_loop(agents[1], theta1_, n_lookaheads[1])
+                agents[0].update(a[0], r[0])
 
             for i, exp in enumerate(experiment):
                 if exp == 'LOLAom':
@@ -273,7 +304,7 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='ACom-ACom', help="experiment")
+    parser.add_argument('-experiment', type=str, default='ACoa-ACoa', help="experiment")
 
     parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
@@ -306,8 +337,6 @@ if __name__ == "__main__":
     print(experiment)
 
     info = args.mem
-
-    print(args.lr_q, args.lr_theta)
 
 
     # for i in range(n_lookaheads):
