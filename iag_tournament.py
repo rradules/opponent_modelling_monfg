@@ -29,7 +29,7 @@ def get_return(rewards, utility, mooc):
     return rewards.detach().cpu().numpy(), ret
 
 
-def step(agents):
+def step(agents, rollout):
     theta1 = agents[0].theta
     theta2 = agents[1].theta
 
@@ -40,7 +40,7 @@ def step(agents):
 
     # just to evaluate progress:
     (s1, s2), _ = env.reset()
-    for t in range(hpL.len_rollout):
+    for t in range(rollout):
         a1, _ = agents[0].act(s1, theta1)
         a2, _ = agents[1].act(s2, theta2)
         (s1, s2), (r1, r2), _, _ = env.step((a1, a2))
@@ -112,9 +112,9 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
             if update % 100 == 0:
                 print(f"Episode {update}...")
-            r, a = step(agents)
-
-            act_probs = [get_act_probs(a[0]), get_act_probs(a[1])]
+            r_s, a_s = step(agents, 100)
+            act_probs = [get_act_probs(a_s[0]), get_act_probs(a_s[1])]
+            r, a = step(agents, 1)
 
             if experiment == ['LOLA', 'LOLA']:
                 theta1_ = agents[0].theta.clone().detach().requires_grad_(True)
@@ -170,8 +170,8 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                     if update > 1:
                         AComGP_loop(agents[i], a[i], r[i], a[i-1], act_probs[i-1], n_lookaheads[i])
 
-            a1, a2 = a
-            r1, r2 = r
+            a1, a2 = a_s
+            r1, r2 = r_s
             if update >= (0.1 * hpL.n_update):
                 for rol_a in range(len(a1)):
                     for batch_a in range(len(a1[rol_a])):
@@ -209,7 +209,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
             df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
-            state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * (trial+1) * hpL.len_rollout)
+            state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * (trial+1) * 100)
             df = pd.DataFrame(state_distribution)
             print(np.sum(state_distribution))
             df.to_csv(f'{path_data}/states_{info}_{n_lookaheads[0]}_{n_lookaheads[1]}.csv', index=False, header=None)
@@ -242,7 +242,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
     df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
-    state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * trials * hpL.len_rollout)
+    state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * trials * 100)
     df = pd.DataFrame(state_distribution)
     print(np.sum(state_distribution))
     df.to_csv(f'{path_data}/states_{info}_{n_lookaheads[0]}_{n_lookaheads[1]}.csv', index=False, header=None)
@@ -284,8 +284,8 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=30, help="number of trials")
-    parser.add_argument('-updates', type=int, default=3000, help="updates")
+    parser.add_argument('-trials', type=int, default=5, help="number of trials")
+    parser.add_argument('-updates', type=int, default=1000, help="updates")
     parser.add_argument('-batch', type=int, default=1, help="batch size")
     #TODO remove the rollout, since it will always be 1
     parser.add_argument('-rollout', type=int, default=1, help="rollout size")
