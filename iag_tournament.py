@@ -52,8 +52,8 @@ def step(agents):
 
 
 def AComGP_loop(agent, actions, rewards, op_actions, op_theta, lookahead):
+    agent.set_op_theta(op_theta)
     for k in range(lookahead):
-        agent.set_op_theta(op_theta)
         #print(f'Lookahead loop {k}')
         if k == 0:
             umodel, likelihood = agent.makeUModel()
@@ -63,16 +63,16 @@ def AComGP_loop(agent, actions, rewards, op_actions, op_theta, lookahead):
 
 
 def LOLA_loop(agent, op_theta, lookahead):
+    agent.set_op_theta(op_theta)
     for k in range(lookahead):
-        agent.set_op_theta(op_theta)
         agent.in_lookahead()
     # update own parameters from out_lookahead:
     agent.out_lookahead()
 
 
 def LOLAom_loop(agent, op_theta, lookahead):
+    agent.set_op_theta(op_theta)
     for k in range(lookahead):
-        agent.set_op_theta(op_theta)
         if k == 0:
             umodel, likelihood = agent.makeUModel()
         agent.in_lookahead(umodel, likelihood)
@@ -145,12 +145,12 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                 agents[0].update(a[0], r[0], a[1])
 
             if experiment == ['LOLA', 'AC']:
-                theta2_ = torch.tensor(np.log(agents[1].policy)).requires_grad_(True)
+                theta2_ = torch.tensor(agents[1].policy).requires_grad_(True)
                 LOLA_loop(agents[0], theta2_, n_lookaheads[0])
                 agents[1].update(a[1], r[1])
 
             if experiment == ['AC', 'LOLA']:
-                theta1_ = torch.tensor(np.log(agents[1].policy)).requires_grad_(True)
+                theta1_ = torch.tensor(agents[0].policy).requires_grad_(True)
                 LOLA_loop(agents[1], theta1_, n_lookaheads[1])
                 agents[0].update(a[0], r[0])
 
@@ -294,7 +294,7 @@ if __name__ == "__main__":
 
     # LOLA Agent
     parser.add_argument('-lr_out', type=float, default=0.1, help="lr outer loop")
-    parser.add_argument('-lr_in', type=float, default=0.2, help="lr inner loop")
+    parser.add_argument('-lr_in', type=float, default=0.1, help="lr inner loop")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
 
@@ -304,7 +304,7 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='ACoa-ACoa', help="experiment")
+    parser.add_argument('-experiment', type=str, default='LOLA-LOLA', help="experiment")
 
     parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
