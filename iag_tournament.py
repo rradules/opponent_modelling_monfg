@@ -284,8 +284,8 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=5, help="number of trials")
-    parser.add_argument('-updates', type=int, default=1000, help="updates")
+    parser.add_argument('-trials', type=int, default=30, help="number of trials")
+    parser.add_argument('-updates', type=int, default=3000, help="updates")
     parser.add_argument('-batch', type=int, default=1, help="batch size")
     #TODO remove the rollout, since it will always be 1
     parser.add_argument('-rollout', type=int, default=1, help="rollout size")
@@ -294,7 +294,7 @@ if __name__ == "__main__":
 
     # LOLA Agent
     parser.add_argument('-lr_out', type=float, default=0.1, help="lr outer loop")
-    parser.add_argument('-lr_in', type=float, default=0.1, help="lr inner loop")
+    parser.add_argument('-lr_in', type=float, default=0.2, help="lr inner loop")
     parser.add_argument('-gammaL', type=float, default=1, help="gamma")
     parser.add_argument('-mem', type=str, default='0M', help="memory")
 
