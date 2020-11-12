@@ -1,11 +1,6 @@
-# Opponent and Utility Modelling in Multi-Objective Normal Form Games
+# Opponent Learning Awareness and Modelling in Multi-Objective Normal Form Games
 
+ALA 2020 SI Submission (NCAA Journal)
 
-## AC-OM (Actor Critic with Opponent Modelling) 
-## ACOLADE (Actor Critic with Opponent Learning Awareness and moDEling) 
-## LOLA-OUM-dice (with Opponent and Utility Model) 
-
-
-
-### LOLA-DICE based on the following implementation:
+LOLA-DICE based on the following implementation:
 https://github.com/alexis-jacq/LOLA_DiCE
