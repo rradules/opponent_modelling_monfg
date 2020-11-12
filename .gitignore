@@ -1,6 +1,8 @@
 plots/
 results/
 scripts/
+DEV/
+TOUPDATE/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
