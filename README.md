@@ -1,6 +1,6 @@
 # Opponent Learning Awareness and Modelling in Multi-Objective Normal Form Games
 
-ALA 2020 SI Submission (NCAA Journal)
+## ALA 2020 SI Submission (NCAA Journal)
 
-LOLA-DICE based on the following implementation:
+LOLA-DICE starts from this implementation:
 https://github.com/alexis-jacq/LOLA_DiCE
