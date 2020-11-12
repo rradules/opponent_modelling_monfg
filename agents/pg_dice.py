@@ -120,7 +120,7 @@ class PGDiceBase:
 
         return discounted_rewards
 
-
+# outdated class
 class PGDice1M(PGDiceBase):
     def __init__(self, num, env, hp, utility, other_utility, mooc):
         self.utility = utility
