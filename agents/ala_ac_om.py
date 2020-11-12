@@ -87,7 +87,7 @@ class OppoModelingACAgent(ActorCriticAgent):
         for i, act in enumerate(actions[0, :]):  # each first action in rollout
             self.Q[opp_actions[0, i], act, :] += self.lr_q * (means[:, i] - self.Q[opp_actions[0, i], act, :])
 
-        expected_q = self.op_theta @ self.Q
+        expected_q = softmax(self.op_theta) @ self.Q
 
         '''
         print("Q-function: ", self.Q)

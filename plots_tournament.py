@@ -17,7 +17,7 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 def plot_results(game, mooc, path_data, experiment):
 
-    path_plots = f'plots_local/tour_{experiment}_{game}_l{l1}_{l2}'
+    path_plots = f'plots/tour_{experiment}_{game}_l{l1}_{l2}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{info}.csv')
@@ -38,7 +38,7 @@ def plot_results(game, mooc, path_data, experiment):
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
-    if game in ['iagRNE', 'iagR']:
+    if game in ['iagRNE', 'iagR', 'iagM']:
         x_axis_labels = ["L", "M"]
         y_axis_labels = ["L", "M"]
     else:
@@ -92,18 +92,18 @@ def plot_results(game, mooc, path_data, experiment):
 
 
 if __name__ == "__main__":
-    experiment = ['LOLA', 'LOLA']
+    experiment = ['LOLAom', 'LOLAom']
     info = '0M'
-    l1 = 3
-    l2 = 0
+    l1 = 1
+    l2 = 1
 
     episodes = 3000
-    moocs = ['SER'] #, 'ESR']
-    games = ['iagNE']#, 'iag', 'iagR', 'iagM', 'iagRNE']
+    moocs = ['SER']
+    games = ['iagNE', 'iag', 'iagR', 'iagM', 'iagRNE'] #['iagNE']
 
-    #for l1 in range(1,2):
-    #    for l2 in range (1,2):
-    for mooc in moocs:
-        for game in games:
-            path_data = f'results/tour_{experiment}_{game}_l{l1}_{l2}'
-            plot_results(game, mooc, path_data, experiment)
+    for l1 in range(1,6):
+        for l2 in range (1,6):
+            for mooc in moocs:
+                for game in games:
+                    path_data = f'results/tour_{experiment}_{game}_l{l1}_{l2}'
+                    plot_results(game, mooc, path_data, experiment)
