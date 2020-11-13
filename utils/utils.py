@@ -1,6 +1,8 @@
-import os
 import errno
+
 import numpy as np
+import os
+
 
 def mkdir_p(path):
     try:

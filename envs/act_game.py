@@ -13,7 +13,6 @@ class ActGame(gym.Env):
 
     NUM_AGENTS = 2
 
-
     NUM_OBJECTIVES = 2
 
     def __init__(self, max_steps, batch_size, payout_mat):
@@ -24,7 +23,7 @@ class ActGame(gym.Env):
         self.NUM_STATES = self.NUM_ACTIONS ** 2 + 1
         self.payout_mat = payout_mat
 
-        self.states = np.reshape(np.array(range(self.NUM_ACTIONS**2)) + 1,
+        self.states = np.reshape(np.array(range(self.NUM_ACTIONS ** 2)) + 1,
                                  (self.NUM_ACTIONS, self.NUM_ACTIONS))
 
         self.available_actions = [

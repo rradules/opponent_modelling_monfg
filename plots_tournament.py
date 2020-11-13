@@ -1,5 +1,5 @@
-import pandas as pd
 import matplotlib
+import pandas as pd
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -16,25 +16,24 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 
 def plot_results(game, mooc, path_data, experiment):
-
     path_plots = f'plots/tour_{experiment}_{game}_l{l1}_{l2}'
     mkdir_p(path_plots)
 
     df1 = pd.read_csv(f'{path_data}/agent1_payoff_{info}.csv')
 
     ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df1, ci='sd',
-                          label=f'Agent 1')
+                      label=f'Agent 1')
     df2 = pd.read_csv(f'{path_data}/agent2_payoff_{info}.csv')
 
     ax = sns.lineplot(x='Episode', y='Payoff', linewidth=2.0, data=df2, ci='sd',
-                          label=f'Agent2')
+                      label=f'Agent2')
 
     ax.set(ylabel='Scalarised payoff per step')
     ax.set(xlabel='Iterations')
-    #ax.set_ylim(0, 14)
+    # ax.set_ylim(0, 14)
     ax.set_xlim(0, episodes)
     plot_name = f"{path_plots}/payoffs"
-    #plt.title("Agent 1")
+    # plt.title("Agent 1")
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
@@ -60,7 +59,7 @@ def plot_results(game, mooc, path_data, experiment):
                       ci='sd', label='M')
     if game not in ['iagRNE', 'iagR', 'iagM']:
         ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1,
-                        ci='sd', label='R')
+                          ci='sd', label='R')
 
     ax.set(ylabel='Action probability')
     ax.set(xlabel='Iterations')
@@ -79,7 +78,7 @@ def plot_results(game, mooc, path_data, experiment):
                       ci='sd', label='M')
     if game not in ['iagRNE', 'iagR', 'iagM']:
         ax = sns.lineplot(x='Episode', y='Action 3', linewidth=2.0, data=df1,
-                        ci='sd', label='R')
+                          ci='sd', label='R')
 
     ax.set(ylabel='Action probability')
     ax.set(xlabel='Iterations')
@@ -92,17 +91,17 @@ def plot_results(game, mooc, path_data, experiment):
 
 
 if __name__ == "__main__":
-    experiment = ['LOLAom', 'LOLAom']
+    experiment = ['AComGP', 'ACom']
     info = '0M'
     l1 = 1
     l2 = 1
 
     episodes = 3000
     moocs = ['SER']
-    games = ['iagNE', 'iag', 'iagR', 'iagM', 'iagRNE'] #['iagNE']
+    games = ['iagNE', 'iag', 'iagR', 'iagM', 'iagRNE'] #
 
-    for l1 in range(1,6):
-        for l2 in range (1,6):
+    for l1 in range(1, 2):
+        for l2 in range(1, 2):
             for mooc in moocs:
                 for game in games:
                     path_data = f'results/tour_{experiment}_{game}_l{l1}_{l2}'

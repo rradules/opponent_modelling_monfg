@@ -1,11 +1,11 @@
+import gpytorch
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 from torch.distributions import Categorical
 
 from utils.memory import Memory
 from utils.umodel import GradUGPModel
-import gpytorch
 
 
 def magic_box(x):
@@ -36,7 +36,7 @@ class PGDiceBase:
     def set_op_theta(self, op_theta):
         self.op_theta = op_theta
 
-    def in_lookahead(self,  umodel=None, likelihood=None):
+    def in_lookahead(self, umodel=None, likelihood=None):
         op_memory = self.perform_rollout(self.op_theta, inner=True)
         op_logprobs, logprobs, op_rewards = op_memory.get_content()
 
@@ -55,7 +55,7 @@ class PGDiceBase:
     def act(self, batch_states, theta):
         batch_states = torch.tensor(batch_states)
         probs = torch.sigmoid(theta)
-        #print(f'Agent {self.id}: {theta}')
+        # print(f'Agent {self.id}: {theta}')
 
         m = Categorical(probs)
         actions = m.sample(sample_shape=batch_states.size())
@@ -104,14 +104,14 @@ class PGDiceBase:
         rewards = torch.stack(rewards, dim=2)
         discounted_rewards = self._apply_discount(rewards)
 
-        #print(f'Agent {self.id}: {discounted_rewards}')
+        # print(f'Agent {self.id}: {discounted_rewards}')
 
         # dice objective:
         if self.mooc == 'SER':
             dice_objective = utility(torch.mean(torch.sum(magic_box(dependencies) * discounted_rewards, dim=2), dim=1))
         else:
             dice_objective = torch.mean(utility(torch.sum(magic_box(dependencies) * discounted_rewards, dim=2)))
-        #print(f'Agent {self.id}: {dice_objective}')
+        # print(f'Agent {self.id}: {dice_objective}')
         return -dice_objective
 
     def _apply_discount(self, rewards):
@@ -119,6 +119,7 @@ class PGDiceBase:
         discounted_rewards = rewards * cum_discount
 
         return discounted_rewards
+
 
 # outdated class
 class PGDice1M(PGDiceBase):
@@ -157,7 +158,7 @@ class PGDiceOM(PGDiceBase):
         self.op_theta_log = self.op_theta_log[-self.hpGP.GP_win:]
 
     def makeUModel(self):
-        y_train = torch.tensor(np.diff(self.op_theta_log, axis=0)/self.hp.lr_in).float().contiguous()
+        y_train = torch.tensor(np.diff(self.op_theta_log, axis=0) / self.hp.lr_in).float().contiguous()
         op_thetas = torch.tensor(self.op_theta_log)
         thetas = torch.stack(self.theta_log)
 
@@ -180,7 +181,7 @@ class PGDiceOM(PGDiceBase):
             output = umodel(x_train)
             loss = -mll(output, y_train)
             loss.backward(retain_graph=True)
-            #print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
+            # print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
             optimizer.step()
 
         return umodel, likelihood
@@ -193,10 +194,5 @@ class PGDiceOM(PGDiceBase):
         pred_point = torch.unsqueeze(pred_point, dim=0)
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            # TODO add paper discussion about taking mean versus sample GP
             grad = likelihood(umodel(pred_point)).mean
         self.op_theta = self.op_theta - self.hp.lr_in * grad.numpy()[0]
-
-    def _sampleGP(self):
-        #TODO add paper discussion about taking mean versus sample GP
-        pass

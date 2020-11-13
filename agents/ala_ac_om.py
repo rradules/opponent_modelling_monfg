@@ -1,9 +1,9 @@
-import numpy as np
-from utils.utils import softmax, softmax_grad
-import torch
 import gpytorch
+import numpy as np
+import torch
+
 from utils.umodel import GradUGPModel
-import torch.nn as nn
+from utils.utils import softmax, softmax_grad
 
 
 class ActorCriticAgent:
@@ -21,7 +21,7 @@ class ActorCriticAgent:
         self.num_actions = num_actions
 
     def act(self, state=None, theta=None):
-        action = np.random.choice(range(self.num_actions), size=self.hp.batch_size,  p=self.policy)
+        action = np.random.choice(range(self.num_actions), size=self.hp.batch_size, p=self.policy)
         return action, theta
 
     def _apply_discount(self, rewards):
@@ -39,7 +39,7 @@ class ActorCriticAgent:
         for i, act in enumerate(actions[0, :]):
             self.Q[act] += self.lr_q * (means[:, i] - self.Q[act])
 
-        #V = np.max(self.Q, axis=0) A2C?
+        # V = np.max(self.Q, axis=0) A2C?
         # expected return
         u = self.policy @ self.Q
 
@@ -136,7 +136,7 @@ class UMOMACAgent(OppoModelingACAgent):
         self.op_theta_log = self.op_theta_log[-self.hpGP.GP_win:]
 
     def makeUModel(self):
-        y_train = torch.tensor(np.diff(self.op_theta_log, axis=0)/self.hp.lr_theta).float().contiguous()
+        y_train = torch.tensor(np.diff(self.op_theta_log, axis=0) / self.hp.lr_theta).float().contiguous()
         op_thetas = torch.tensor(self.op_theta_log)
         thetas = torch.tensor(self.theta_log)
 
@@ -175,4 +175,3 @@ class UMOMACAgent(OppoModelingACAgent):
             grad = likelihood(umodel(pred_point)).mean
 
         self.op_theta = self.op_theta + self.hp.lr_theta * grad.numpy()[0]
-

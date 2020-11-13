@@ -10,6 +10,7 @@ class HpLolaDice:
         self.lr_GP = lr_GP
         self.GP_win = GP_win
 
+
 class HpGP:
     def __init__(self, iter=10, lr_GP=0.1, GP_win=50):
         self.iter = iter
@@ -26,4 +27,3 @@ class HpAC:
         self.len_rollout = rollout
         self.batch_size = batch
         self.window = 100
-

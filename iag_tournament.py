@@ -1,17 +1,18 @@
 # coding: utf-8
 
-import numpy as np
-import torch
-import pandas as pd
-
-from envs import IAG
-from utils.hps import HpLolaDice, HpAC, HpGP
-from agents.pg_dice import PGDiceBase, PGDice1M, PGDiceOM
-from agents.ala_ac_om import ActorCriticAgent, OppoModelingACAgent, UMOMACAgent
-from utils.utils import mkdir_p
 from collections import Counter
+
 import argparse
+import numpy as np
+import pandas as pd
+import torch
+
+from agents.ala_ac_om import ActorCriticAgent, OppoModelingACAgent, UMOMACAgent
+from agents.pg_dice import PGDiceBase, PGDice1M, PGDiceOM
+from envs import IAG
 from envs.monfgs import get_payoff_matrix
+from utils.hps import HpLolaDice, HpAC, HpGP
+from utils.utils import mkdir_p
 
 payoff_episode_log1 = []
 payoff_episode_log2 = []
@@ -145,19 +146,19 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
 
             for i, exp in enumerate(experiment):
                 if exp == 'LOLAom':
-                    agents[i].update_logs(np.log(act_probs[i-1]))
+                    agents[i].update_logs(np.log(act_probs[i - 1]))
                     if update > 1:
-                        LOLAom_loop(agents[i], torch.tensor(np.log(act_probs[i-1])), n_lookaheads[i])
+                        LOLAom_loop(agents[i], torch.tensor(np.log(act_probs[i - 1])), n_lookaheads[i])
                 if exp == 'AC':
                     agents[i].update(a[i], r[i])
                 if exp == 'ACom':
                     if update > 1:
-                        agents[i].set_op_theta(act_probs[i-1])
-                        agents[i].update(a[i], r[i], a[i-1])
+                        agents[i].set_op_theta(act_probs[i - 1])
+                        agents[i].update(a[i], r[i], a[i - 1])
                 if exp == 'AComGP':
-                    agents[i].update_logs(act_probs[i-1])
+                    agents[i].update_logs(act_probs[i - 1])
                     if update > 1:
-                        AComGP_loop(agents[i], a[i], r[i], a[i-1], act_probs[i-1], n_lookaheads[i])
+                        AComGP_loop(agents[i], a[i], r[i], a[i - 1], act_probs[i - 1], n_lookaheads[i])
 
             a1, a2 = a_s
             r1, r2 = r_s
@@ -186,13 +187,14 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
             df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-            path_data = f'results/tour_{experiment}_{game}_l{n_lookaheads[0]}_{n_lookaheads[1]}'  # /{mooc}/{hp.use_baseline}'
+            path_data = f'results_local/tour_{experiment}_{game}_l{n_lookaheads[0]}_{n_lookaheads[1]}'  # /{mooc}/{hp.use_baseline}'
             mkdir_p(path_data)
 
             df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
             df2.to_csv(f'{path_data}/agent2_payoff_{info}.csv', index=False)
 
-            state_distribution = state_distribution_log / (hpL.batch_size * (0.9 * hpL.n_update) * (trial+1) * win_rollout)
+            state_distribution = state_distribution_log / (
+                        hpL.batch_size * (0.9 * hpL.n_update) * (trial + 1) * win_rollout)
             df = pd.DataFrame(state_distribution)
             print(np.sum(state_distribution))
             df.to_csv(f'{path_data}/states_{info}_{n_lookaheads[0]}_{n_lookaheads[1]}.csv', index=False, header=None)
@@ -236,8 +238,6 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
     del df1, df2, df
 
 
-
-
 def get_act_probs(act_ep):
     act_probs = 1e-8 * np.ones(env.NUM_ACTIONS)
     for actions in act_ep:
@@ -271,10 +271,10 @@ if __name__ == "__main__":
     parser.add_argument('-gammaAC', type=float, default=1, help="gamma")
 
     # experiment
-    parser.add_argument('-game', type=str, default='iagNE', help="game")
-    parser.add_argument('-experiment', type=str, default='AC-AC', help="experiment")
+    parser.add_argument('-game', type=str, default='iagM', help="game")
+    parser.add_argument('-experiment', type=str, default='AComGP-ACom', help="experiment")
 
-    parser.add_argument('-lookahead1', type=int, default=3, help="number of lookaheads for agent 1")
+    parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
 
     args = parser.parse_args()
