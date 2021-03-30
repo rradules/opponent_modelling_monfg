@@ -27,3 +27,12 @@ class HpAC:
         self.len_rollout = rollout
         self.batch_size = batch
         self.window = 100
+
+class HpQ:
+    def __init__(self, alpha=0.05, epsilon=0.1, gamma=0.96, alpha_decay=1, epsilon_decay=0.999, rand_prob=False):
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.gamma = gamma
+        self.alpha_decay = alpha_decay
+        self.epsilon_decay = epsilon_decay
+        self.rand_prob = rand_prob

@@ -91,18 +91,18 @@ def plot_results(game, mooc, path_data, experiment):
 
 
 if __name__ == "__main__":
-    experiment = ['AComGP', 'ACom']
+    experiment = ['AC', 'Q']
     info = '0M'
     l1 = 1
     l2 = 1
 
-    episodes = 3000
+    episodes = 2000
     moocs = ['SER']
-    games = ['iagNE', 'iag', 'iagR', 'iagM', 'iagRNE'] #
+    games = ['iagM'] #['iagNE', 'iagR', 'iagM', 'iagRNE', 'iag'] # ['iagRNE'] # ['iag']
 
     for l1 in range(1, 2):
         for l2 in range(1, 2):
             for mooc in moocs:
                 for game in games:
-                    path_data = f'results/tour_{experiment}_{game}_l{l1}_{l2}'
+                    path_data = f'results_local/tour_{experiment}_{game}_l{l1}_{l2}'
                     plot_results(game, mooc, path_data, experiment)

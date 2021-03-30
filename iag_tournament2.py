@@ -9,9 +9,10 @@ import torch
 
 from agents.ala_ac_om import ActorCriticAgent, OppoModelingACAgent, UMOMACAgent
 from agents.pg_dice import PGDiceBase, PGDice1M, PGDiceOM
+from agents.mo_q_learning import QLearningAgent
 from envs import IAG
 from envs.monfgs import get_payoff_matrix
-from utils.hps import HpLolaDice, HpAC, HpGP
+from utils.hps import HpLolaDice, HpAC, HpGP, HpQ
 from utils.utils import mkdir_p
 
 payoff_episode_log1 = []
@@ -97,6 +98,8 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                     agents[i] = PGDice1M(i, env, hpL, u[i], mooc, u[i - 1])
             elif experiment[i] == 'LOLAom':
                 agents[i] = PGDiceOM(i, env, hpL, u[i], mooc, hpGP=hpGP)
+            elif experiment[i] == 'Q':
+                agents[i] = QLearningAgent(i, hpQ, u[i], env.NUM_ACTIONS)
 
         for update in range(hpL.n_update):
             # rollout actual current policies:
@@ -159,6 +162,8 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
                     agents[i].update_logs(act_probs[i - 1])
                     if update > 1:
                         AComGP_loop(agents[i], a[i], r[i], a[i - 1], act_probs[i - 1], n_lookaheads[i])
+                if exp == 'Q':
+                    agents[i].update(a[i], r[i])
 
             a1, a2 = a_s
             r1, r2 = r_s
@@ -187,7 +192,7 @@ def play(n_lookaheads, trials, info, mooc, game, experiment):
             df1 = pd.DataFrame(payoff_episode_log1, columns=columns)
             df2 = pd.DataFrame(payoff_episode_log2, columns=columns)
 
-            path_data = f'results_local/tour_{experiment}_{game}_l{n_lookaheads[0]}_{n_lookaheads[1]}'  # /{mooc}/{hp.use_baseline}'
+            path_data = f'results/tour_{experiment}_{game}_l{n_lookaheads[0]}_{n_lookaheads[1]}'  # /{mooc}/{hp.use_baseline}'
             mkdir_p(path_data)
 
             df1.to_csv(f'{path_data}/agent1_payoff_{info}.csv', index=False)
@@ -253,7 +258,7 @@ def get_act_probs(act_ep):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-trials', type=int, default=30, help="number of trials")
+    parser.add_argument('-trials', type=int, default=15, help="number of trials")
     parser.add_argument('-updates', type=int, default=3000, help="updates")
     parser.add_argument('-batch', type=int, default=1, help="batch size")
     parser.add_argument('-rollout', type=int, default=1, help="rollout size")
@@ -272,7 +277,7 @@ if __name__ == "__main__":
 
     # experiment
     parser.add_argument('-game', type=str, default='iagM', help="game")
-    parser.add_argument('-experiment', type=str, default='ACom-ACom', help="experiment")
+    parser.add_argument('-experiment', type=str, default='Q-AC', help="experiment")
 
     parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")
@@ -294,6 +299,8 @@ if __name__ == "__main__":
                      args.updates, args.rollout, args.batch)
     hpAC = HpAC(args.lr_q, args.lr_theta, args.gammaAC,
                 args.updates, args.rollout, args.batch)
+
+    hpQ = HpQ()
 
     hpGP = HpGP()
 
