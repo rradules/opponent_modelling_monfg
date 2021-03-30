@@ -277,7 +277,7 @@ if __name__ == "__main__":
 
     # experiment
     parser.add_argument('-game', type=str, default='iagM', help="game")
-    parser.add_argument('-experiment', type=str, default='Q-AC', help="experiment")
+    parser.add_argument('-experiment', type=str, default='LOLAom-Q', help="experiment")
 
     parser.add_argument('-lookahead1', type=int, default=1, help="number of lookaheads for agent 1")
     parser.add_argument('-lookahead2', type=int, default=1, help="number of lookaheads for agent 2")

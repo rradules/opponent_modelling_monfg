@@ -38,7 +38,6 @@ class QLearningAgent:
         strategy = self.calc_mixed_strategy_nonlinear()
         if np.sum(strategy) != 1:
                 strategy = strategy / np.sum(strategy)
-        print(strategy)
         return np.random.choice(range(self.num_actions), p=strategy)
 
     def calc_mixed_strategy_nonlinear(self):
