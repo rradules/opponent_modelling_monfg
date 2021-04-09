@@ -10,7 +10,6 @@ class QLearningAgent:
 
         self.alpha = hp.alpha
         self.epsilon = hp.epsilon
-        self.epsilon_decay = hp.epsilon_decay
         self.utility = utility_function
         self.rand_prob = hp.rand_prob
         self.num_objectives = 2
